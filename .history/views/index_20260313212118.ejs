@@ -1,0 +1,70 @@
+<div class="row mb-4">
+  <div class="col">
+    <h1 class="display-5">Campus Lost &amp; Found</h1>
+    <p class="lead">Report lost or found items, search by category, and match with others on campus.</p>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Quick Search</h5>
+        <form action="/items/search" method="get" class="row g-2">
+          <div class="col-md-4">
+            <input type="text" name="q" class="form-control" placeholder="Item name or description" />
+          </div>
+          <div class="col-md-3">
+            <select name="category" class="form-select">
+              <option value="">Category</option>
+              <option value="Phone">Phone</option>
+              <option value="Wallet">Wallet</option>
+              <option value="Bag">Bag</option>
+              <option value="ID Card">ID Card</option>
+              <option value="Books">Books</option>
+              <option value="Electronics">Electronics</option>
+              <option value="Others">Others</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <input type="text" name="location" class="form-control" placeholder="Location" />
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-primary w-100" type="submit">Search</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <div class="col">
+    <h2 class="h5">Recently reported items</h2>
+    <div class="row row-cols-1 row-cols-md-3 g-3">
+      <% if (items && items.length) { %>
+      <% items.forEach((item) => { %>
+      <div class="col">
+        <div class="card h-100">
+          <% if (item.photoPath) { %>
+          <img src="<%= item.photoPath %>" class="card-img-top" alt="Item photo" style="max-height: 200px; object-fit: cover;" />
+          <% } else { %>
+          <div class="card-img-top bg-secondary text-white p-4 text-center">No photo</div>
+          <% } %>
+          <div class="card-body">
+            <h5 class="card-title"><%= item.name %></h5>
+            <p class="card-text"><%= item.description ? item.description.slice(0, 80) : '' %></p>
+            <p class="card-text"><small class="text-muted"><%= item.location %> - <%= item.type %></small></p>
+            <a href="/items/<%= item.id %>" class="btn btn-sm btn-outline-primary">View</a>
+          </div>
+        </div>
+      </div>
+      <% }) %>
+      <% } else { %>
+      <div class="col">
+        <div class="alert alert-info">No items reported yet. Be the first to report!</div>
+      </div>
+      <% } %>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,63 @@
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="card-title mb-2">Report Lost or Found Item</h2>
+        <p class="text-muted mb-4">Provide as much detail as you can so others can easily identify the item.</p>
+        <form method="post" action="/items/report" enctype="multipart/form-data">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Report type</label>
+              <select name="type" class="form-select" required>
+                <option value="lost">Lost</option>
+                <option value="found">Found</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Category</label>
+              <select name="category" class="form-select" required>
+                <option value="Phone">Phone</option>
+                <option value="Wallet">Wallet</option>
+                <option value="Bag">Bag</option>
+                <option value="ID Card">ID Card</option>
+                <option value="Books">Books</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Item name</label>
+            <input type="text" name="name" class="form-control" required />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="4"></textarea>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Location</label>
+              <input type="text" name="location" class="form-control" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date</label>
+              <input type="date" name="dateLost" class="form-control" required />
+            </div>
+          </div>
+
+          <div class="mb-3 mt-3">
+            <label class="form-label">Photo (optional)</label>
+            <input type="file" name="photo" accept="image/*" class="form-control" />
+          </div>
+
+          <button class="btn btn-primary w-100" type="submit">
+            <i class="bi bi-send me-2"></i>Submit report
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,90 @@
+<div class="row mb-4 align-items-center">
+  <div class="col-md-8">
+    <h1>Search listings</h1>
+    <p class="lead text-muted">Filter and browse reported lost and found items across campus.</p>
+  </div>
+  <div class="col-md-4 text-md-end mt-3 mt-md-0">
+    <a href="/items/report" class="btn btn-outline-primary">
+      <i class="bi bi-journal-plus me-2"></i>Report an item
+    </a>
+  </div>
+</div>
+
+<div class="card p-4 mb-4 shadow-sm">
+  <form class="row g-3" method="get" action="/items/search">
+    <div class="col-md-4">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input
+          type="text"
+          name="q"
+          value="<%= filters.q || '' %>"
+          class="form-control"
+          placeholder="Search by item name or description"
+        />
+      </div>
+    </div>
+    <div class="col-md-2">
+      <select name="category" class="form-select">
+        <option value="">All categories</option>
+        <option value="Phone" <%= filters.category === 'Phone' ? 'selected' : '' %>>Phone</option>
+        <option value="Wallet" <%= filters.category === 'Wallet' ? 'selected' : '' %>>Wallet</option>
+        <option value="Bag" <%= filters.category === 'Bag' ? 'selected' : '' %>>Bag</option>
+        <option value="ID Card" <%= filters.category === 'ID Card' ? 'selected' : '' %>>ID Card</option>
+        <option value="Books" <%= filters.category === 'Books' ? 'selected' : '' %>>Books</option>
+        <option value="Electronics" <%= filters.category === 'Electronics' ? 'selected' : '' %>>Electronics</option>
+        <option value="Others" <%= filters.category === 'Others' ? 'selected' : '' %>>Others</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+        <input
+          type="text"
+          name="location"
+          value="<%= filters.location || '' %>"
+          class="form-control"
+          placeholder="Location"
+        />
+      </div>
+    </div>
+    <div class="col-md-2">
+      <select name="type" class="form-select">
+        <option value="">Both</option>
+        <option value="lost" <%= filters.type === 'lost' ? 'selected' : '' %>>Lost</option>
+        <option value="found" <%= filters.type === 'found' ? 'selected' : '' %>>Found</option>
+      </select>
+    </div>
+    <div class="col-md-2 d-grid">
+      <button class="btn btn-primary" type="submit">
+        <i class="bi bi-filter-circle me-1"></i>Filter
+      </button>
+    </div>
+  </form>
+</div>
+
+<div class="row row-cols-1 row-cols-md-3 g-3">
+  <% if (items && items.length) { %>
+  <% items.forEach((item) => { %>
+  <div class="col">
+    <div class="card h-100">
+      <% if (item.photoPath) { %>
+      <img src="<%= item.photoPath %>" class="card-img-top" alt="Item photo" style="object-fit: cover; height: 180px" />
+      <% } else { %>
+      <div class="card-img-top bg-secondary text-white p-4 text-center">No photo</div>
+      <% } %>
+      <div class="card-body">
+        <h5 class="card-title"><%= item.name %></h5>
+        <p class="card-text"><%= item.description ? item.description.slice(0, 80) : '' %></p>
+        <p class="card-text"><small class="text-muted"><%= item.location %> • <%= item.type %></small></p>
+        <a href="/items/<%= item.id %>" class="btn btn-sm btn-outline-primary">View details</a>
+      </div>
+    </div>
+  </div>
+  <% }) %>
+  <% } else { %>
+  <div class="col">
+    <div class="alert alert-info">No results found. Try adjusting your filters.</div>
+  </div>
+  <% } %>
+</div>

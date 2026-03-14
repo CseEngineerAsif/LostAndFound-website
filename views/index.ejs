@@ -1,0 +1,118 @@
+<%
+  const itemsList = items || [];
+  const foundItems = itemsList.filter((item) => item.type === 'found');
+  const returnedItems = itemsList.filter((item) => item.status === 'resolved');
+  const activeItems = itemsList.filter((item) => item.status !== 'resolved');
+  const featuredFound = foundItems.length
+    ? foundItems.slice(0, 6)
+    : [
+        { name: 'Navy Backpack', location: 'Library Hall', dateLost: '2026-03-09', category: 'Bag', type: 'found' },
+        { name: 'Silver Water Bottle', location: 'Gym Entrance', dateLost: '2026-03-10', category: 'Others', type: 'found' },
+        { name: 'Blue Earbuds Case', location: 'Student Center', dateLost: '2026-03-08', category: 'Electronics', type: 'found' },
+        { name: 'Campus ID Card', location: 'Cafeteria', dateLost: '2026-03-07', category: 'ID Card', type: 'found' },
+        { name: 'Calculator', location: 'Engineering Block', dateLost: '2026-03-06', category: 'Electronics', type: 'found' },
+        { name: 'Textbook: Biology 101', location: 'Lecture Hall B', dateLost: '2026-03-05', category: 'Books', type: 'found' },
+      ];
+%>
+
+<section class="hero-landing full-bleed">
+  <div class="container hero-landing__inner">
+    <div class="hero-copy">
+      <span class="eyebrow">Campus Lost &amp; Found</span>
+      <h1>Reconnect Lost Items with Their Owners</h1>
+      <p>
+        A trusted space for students and staff to report, verify, and return missing items quickly.
+        Keep the campus community connected and secure.
+      </p>
+      <div class="hero-actions">
+        <a href="/items/report?type=lost" class="btn btn-sun">Report Lost Item</a>
+        <a href="/items/report?type=found" class="btn btn-primary">Report Found Item</a>
+        <a href="/items/search" class="btn btn-ghost">Browse Feed</a>
+      </div>
+    </div>
+    <div class="hero-illustration">
+      <svg width="320" height="260" viewBox="0 0 320 260" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="10" y="20" width="300" height="220" rx="28" fill="rgba(255,255,255,0.08)" />
+        <circle cx="95" cy="95" r="36" fill="#f4b860" opacity="0.9" />
+        <circle cx="215" cy="90" r="30" fill="#1aa6a0" opacity="0.9" />
+        <rect x="70" y="140" width="180" height="70" rx="20" fill="#ffffff" opacity="0.9" />
+        <rect x="90" y="160" width="70" height="12" rx="6" fill="#0b1f2a" opacity="0.6" />
+        <rect x="90" y="182" width="110" height="12" rx="6" fill="#0b1f2a" opacity="0.4" />
+        <rect x="200" y="160" width="40" height="40" rx="10" fill="#1aa6a0" opacity="0.8" />
+      </svg>
+      <span class="hero-pill">Students helping students</span>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="stats-strip">
+    <div>
+      <h3><%= foundItems.length || 128 %></h3>
+      <span>Items Found</span>
+    </div>
+    <div>
+      <h3><%= returnedItems.length || 76 %></h3>
+      <span>Items Returned</span>
+    </div>
+    <div>
+      <h3><%= activeItems.length || 52 %></h3>
+      <span>Active Reports</span>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-heading">
+    <h2>Recently Found Items</h2>
+    <p>Check the latest items turned in by students, faculty, and staff.</p>
+  </div>
+  <div class="featured-grid">
+    <% featuredFound.forEach((item) => { %>
+    <article class="item-card reveal">
+      <div class="item-image">
+        <% if (item.photoPath) { %>
+        <img src="<%= item.photoPath %>" alt="<%= item.name %>" />
+        <% } else { %>
+        <i class="bi bi-camera" style="font-size: 2rem; color: rgba(11, 31, 42, 0.6);"></i>
+        <% } %>
+      </div>
+      <div class="item-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><%= item.name %></h5>
+          <span class="status-pill status-found">Found</span>
+        </div>
+        <div class="item-meta">
+          <div><i class="bi bi-geo-alt me-1"></i><%= item.location || 'Campus' %></div>
+          <div><i class="bi bi-calendar-event me-1"></i><%= item.dateLost || 'Recent' %></div>
+        </div>
+        <a href="/items/search" class="btn btn-outline-primary btn-sm">View details</a>
+      </div>
+    </article>
+    <% }) %>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-heading center">
+    <h2>How It Works</h2>
+    <p>Three simple steps to reunite items with their owners.</p>
+  </div>
+  <div class="steps-grid">
+    <div class="step-card reveal">
+      <div class="step-index">01</div>
+      <h5>Report</h5>
+      <p class="text-muted">Share what you lost or found with clear details and a photo.</p>
+    </div>
+    <div class="step-card reveal">
+      <div class="step-index">02</div>
+      <h5>Match</h5>
+      <p class="text-muted">Our feed and smart suggestions highlight possible matches.</p>
+    </div>
+    <div class="step-card reveal">
+      <div class="step-index">03</div>
+      <h5>Return</h5>
+      <p class="text-muted">Coordinate safe pickups through campus security or staff.</p>
+    </div>
+  </div>
+</section>

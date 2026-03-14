@@ -1,0 +1,46 @@
+<div class="row">
+  <div class="col">
+    <h1>Welcome, <%= currentUser.name %></h1>
+    <p class="lead">
+      Use the links below to report lost or found items, or search for matching
+      reports.
+    </p>
+
+    <div class="row row-cols-1 row-cols-md-3 g-3">
+      <div class="col">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Report an Item</h5>
+            <p class="card-text">
+              Tell campus what you lost or what you found so others can connect
+              with you.
+            </p>
+            <a href="/items/report" class="btn btn-primary">Report Item</a>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Search Items</h5>
+            <p class="card-text">
+              Search lost and found reports by name, category, or location.
+            </p>
+            <a href="/items/search" class="btn btn-primary">Search</a>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">My Reports (Coming Soon)</h5>
+            <p class="card-text">
+              Track the status of your reported items and view matches.
+            </p>
+            <button class="btn btn-secondary" disabled>Coming Soon</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

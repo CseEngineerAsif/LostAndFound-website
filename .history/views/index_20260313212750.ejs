@@ -1,0 +1,91 @@
+<section class="hero text-center text-md-start mb-5">
+  <div class="row align-items-center">
+    <div class="col-md-6">
+      <h1 class="display-4 fw-bold">Find what you lost. Help others find what they lost.</h1>
+      <p class="lead text-muted">A campus-wide lost &amp; found portal that makes reporting, searching, and matching items fast and reliable.</p>
+      <div class="d-flex gap-2 flex-column flex-sm-row align-items-center justify-content-center justify-content-md-start">
+        <a href="/items/report" class="btn btn-primary btn-lg">
+          <i class="bi bi-journal-plus me-2"></i>Report an item
+        </a>
+        <a href="/items/search" class="btn btn-outline-primary btn-lg">
+          <i class="bi bi-search me-2"></i>Search listings
+        </a>
+      </div>
+    </div>
+    <div class="col-md-6 text-center mt-4 mt-md-0">
+      <img src="/images/hero-illustration.svg" alt="Lost and found illustration" class="img-fluid" style="max-height: 320px;" />
+    </div>
+  </div>
+</section>
+
+<section class="mb-5">
+  <div class="card p-4 shadow-sm">
+    <h5 class="mb-3">Quick Search</h5>
+    <form action="/items/search" method="get" class="row g-3">
+      <div class="col-md-4">
+        <input type="text" name="q" class="form-control" placeholder="Item name or description" />
+      </div>
+      <div class="col-md-3">
+        <select name="category" class="form-select">
+          <option value="">Category</option>
+          <option value="Phone">Phone</option>
+          <option value="Wallet">Wallet</option>
+          <option value="Bag">Bag</option>
+          <option value="ID Card">ID Card</option>
+          <option value="Books">Books</option>
+          <option value="Electronics">Electronics</option>
+          <option value="Others">Others</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <input type="text" name="location" class="form-control" placeholder="Location" />
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100" type="submit">Search</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section>
+  <div class="d-flex align-items-center mb-3">
+    <h2 class="h4 mb-0">Recently reported items</h2>
+    <span class="badge bg-secondary ms-3"><%= items ? items.length : 0 %> items</span>
+  </div>
+
+  <div class="row row-cols-1 row-cols-md-3 g-4 cards-grid">
+    <% if (items && items.length) { %>
+    <% items.forEach((item) => { %>
+    <div class="col">
+      <div class="card h-100">
+        <% if (item.photoPath) { %>
+        <img src="<%= item.photoPath %>" class="card-img-top" alt="Item photo" />
+        <% } else { %>
+        <div class="card-img-top bg-secondary text-white p-4 text-center">
+          <i class="bi bi-camera" style="font-size: 2rem"></i>
+          <div class="small mt-2">No photo provided</div>
+        </div>
+        <% } %>
+        <div class="card-body d-flex flex-column">
+          <h5 class="card-title"><%= item.name %></h5>
+          <p class="card-text text-muted mb-2"><%= item.description ? item.description.slice(0, 90) : 'No description provided.' %></p>
+          <div class="mt-auto">
+            <p class="mb-2 small text-muted">
+              <i class="bi bi-geo-alt me-1"></i><%= item.location %> &middot;
+              <i class="bi bi-tag me-1"></i><%= item.category %>
+            </p>
+            <a href="/items/<%= item.id %>" class="btn btn-sm btn-outline-primary w-100">
+              View details
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% }) %>
+    <% } else { %>
+    <div class="col">
+      <div class="alert alert-info">No items reported yet. Be the first to report!</div>
+    </div>
+    <% } %>
+  </div>
+</section>
