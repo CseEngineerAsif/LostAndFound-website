@@ -1,0 +1,66 @@
+<nav class="navbar navbar-expand-lg site-navbar py-3 sticky-top">
+  <div class="container">
+    <a class="navbar-brand brand-mark" href="/">
+      <span class="brand-icon"><i class="bi bi-compass"></i></span>
+      <span class="brand-text">CampusFind</span>
+    </a>
+    <button
+      class="navbar-toggler"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#navbarNav"
+      aria-controls="navbarNav"
+      aria-expanded="false"
+      aria-label="Toggle navigation"
+    >
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto align-items-lg-center gap-lg-3">
+        <li class="nav-item">
+          <a class="nav-link <%= currentSection === 'home' ? 'active' : '' %>" href="/">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= currentSection === 'feed' ? 'active' : '' %>" href="/items/search">Feed</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= currentSection === 'report' ? 'active' : '' %>" href="/items/report">Report</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= currentSection === 'lost' ? 'active' : '' %>" href="/items/lost">Lost Items</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= currentSection === 'found' ? 'active' : '' %>" href="/items/found">Found Items</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= currentSection === 'dashboard' ? 'active' : '' %>" href="/dashboard">Dashboard</a>
+        </li>
+      </ul>
+      <div class="d-flex gap-2 align-items-center nav-actions">
+        <button class="icon-button" aria-label="Search">
+          <i class="bi bi-search"></i>
+        </button>
+        <button class="icon-button" type="button" data-theme-toggle aria-label="Toggle theme">
+          <i class="bi bi-moon-stars"></i>
+        </button>
+        <% if (currentUser) { %>
+        <a class="icon-button" href="/dashboard" aria-label="Account">
+          <i class="bi bi-person"></i>
+        </a>
+        <form method="post" action="/auth/logout" class="d-inline">
+          <button class="icon-button" type="submit" aria-label="Logout">
+            <i class="bi bi-box-arrow-right"></i>
+          </button>
+        </form>
+        <% } else { %>
+        <a class="icon-button" href="/auth/login" aria-label="Login">
+          <i class="bi bi-person"></i>
+        </a>
+        <a href="/auth/register" class="btn btn-outline-primary btn-sm">Register</a>
+        <% } %>
+        <a href="/items/report" class="btn btn-sun btn-sm">Report now</a>
+      </div>
+    </div>
+  </div>
+</nav>

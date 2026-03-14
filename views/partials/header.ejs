@@ -19,19 +19,22 @@
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav me-auto align-items-lg-center gap-lg-3">
         <li class="nav-item">
-          <a class="nav-link" href="/">Home</a>
+          <a class="nav-link <%= currentSection === 'home' ? 'active' : '' %>" href="/">Home</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="/items/search">Feed</a>
+          <a class="nav-link <%= currentSection === 'feed' ? 'active' : '' %>" href="/items/search">Feed</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="/items/report?type=lost">Report Lost</a>
+          <a class="nav-link <%= currentSection === 'report' ? 'active' : '' %>" href="/items/report">Report</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="/items/report?type=found">Report Found</a>
+          <a class="nav-link <%= currentSection === 'lost' ? 'active' : '' %>" href="/items/lost">Lost Items</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="/dashboard">Dashboard</a>
+          <a class="nav-link <%= currentSection === 'found' ? 'active' : '' %>" href="/items/found">Found Items</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= currentSection === 'dashboard' ? 'active' : '' %>" href="/dashboard">Dashboard</a>
         </li>
       </ul>
       <div class="d-flex gap-2 align-items-center nav-actions">
@@ -45,12 +48,18 @@
         <a class="icon-button" href="/dashboard" aria-label="Account">
           <i class="bi bi-person"></i>
         </a>
+        <form method="post" action="/auth/logout" class="d-inline">
+          <button class="icon-button" type="submit" aria-label="Logout">
+            <i class="bi bi-box-arrow-right"></i>
+          </button>
+        </form>
         <% } else { %>
-        <a class="icon-button" href="/auth/login" aria-label="Account">
+        <a class="icon-button" href="/auth/login" aria-label="Login">
           <i class="bi bi-person"></i>
         </a>
+        <a href="/auth/register" class="btn btn-outline-primary btn-sm">Register</a>
         <% } %>
-        <a href="/items/report?type=lost" class="btn btn-sun btn-sm">Report now</a>
+        <a href="/items/report" class="btn btn-sun btn-sm">Report now</a>
       </div>
     </div>
   </div>

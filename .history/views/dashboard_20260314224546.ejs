@@ -1,0 +1,201 @@
+<section class="page-hero mb-4">
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+    <div>
+      <h1 class="display-6 mb-1">Welcome, <%= currentUser.name %></h1>
+      <p class="text-muted mb-0">
+        Track your reports, manage claims, and stay updated with campus alerts.
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/items/report" class="btn btn-primary btn-lg">
+        <i class="bi bi-journal-plus me-2"></i>Post Item
+      </a>
+      <a href="/items/search" class="btn btn-outline-primary btn-lg">
+        Browse feed
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="section pt-0">
+  <div class="stat-grid">
+    <div class="stat-card">
+      <h3><%= stats.total %></h3>
+      <span>My reports</span>
+    </div>
+    <div class="stat-card">
+      <h3><%= stats.active %></h3>
+      <span>Active reports</span>
+    </div>
+    <div class="stat-card">
+      <h3><%= stats.resolved %></h3>
+      <span>Returned items</span>
+    </div>
+  </div>
+</section>
+
+<section class="section pt-0">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="h4 mb-0">My Reports</h2>
+    <a href="/items/report" class="btn btn-outline-primary btn-sm">Add new</a>
+  </div>
+
+  <% if (myItems && myItems.length) { %>
+  <div class="row row-cols-1 row-cols-lg-3 g-4 cards-grid">
+    <% myItems.forEach((item) => { %>
+    <div class="col">
+      <div class="card h-100 reveal">
+        <% if (item.photoPath) { %>
+        <img src="<%= item.photoPath %>" class="card-img-top" alt="Item photo" />
+        <% } else { %>
+        <div class="card-img-top bg-secondary text-white p-4 text-center">
+          <i class="bi bi-camera" style="font-size: 2rem"></i>
+          <div class="small mt-2">No photo provided</div>
+        </div>
+        <% } %>
+        <div class="card-body d-flex flex-column">
+          <% const itemStatus = item.status || 'reported'; %>
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <h5 class="card-title mb-0"><%= item.name %></h5>
+            <span class="status-pill status-<%= itemStatus %>"><%= itemStatus %></span>
+          </div>
+          <p class="text-muted mb-2"><i class="bi bi-geo-alt me-1"></i><%= item.location %></p>
+          <p class="small text-muted mb-3">
+            <i class="bi bi-calendar-event me-1"></i><%= new Date(item.createdAt).toLocaleDateString() %>
+          </p>
+          <div class="mt-auto">
+            <a href="/items/<%= item.id %>" class="btn btn-sm btn-outline-primary w-100">View details</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+  <% } else { %>
+  <div class="empty-state">
+    <h5>No reports yet</h5>
+    <p class="text-muted mb-3">Start by posting a lost or found item to help the community.</p>
+    <a href="/items/report" class="btn btn-primary">Create first report</a>
+  </div>
+  <% } %>
+</section>
+
+<section class="section pt-0">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="h4 mb-0">Claimed Items</h2>
+    <span class="badge badge-soft"><%= claimedItems.length %> returned</span>
+  </div>
+  <% if (claimedItems.length) { %>
+  <div class="row row-cols-1 row-cols-lg-3 g-4 cards-grid">
+    <% claimedItems.forEach((item) => { %>
+    <div class="col">
+      <div class="card h-100 reveal">
+        <div class="card-body">
+          <h5 class="card-title"><%= item.name %></h5>
+          <p class="text-muted mb-2"><i class="bi bi-geo-alt me-1"></i><%= item.location %></p>
+          <span class="status-pill status-resolved">Returned</span>
+        </div>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+  <% } else { %>
+  <div class="empty-state">No claimed items yet.</div>
+  <% } %>
+</section>
+
+<section class="section pt-0">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="h4 mb-0">Notifications</h2>
+    <button class="btn btn-ghost btn-sm">Mark all as read</button>
+  </div>
+  <div class="card p-4">
+    <div class="d-grid gap-3">
+      <div class="d-flex justify-content-between">
+        <div>
+          <strong>New match suggestion</strong>
+          <p class="text-muted mb-0">AI spotted a similar item posted near the library.</p>
+        </div>
+        <span class="tag">Just now</span>
+      </div>
+      <div class="d-flex justify-content-between">
+        <div>
+          <strong>Item status update</strong>
+          <p class="text-muted mb-0">Your report for "Black Wallet" was marked returned.</p>
+        </div>
+        <span class="tag">Today</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<% if (currentUser && currentUser.role === 'admin') { %>
+<section class="section pt-0">
+  <div class="card p-4">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div>
+        <h5 class="mb-1">Admin moderation panel</h5>
+        <p class="text-muted mb-0">Filter reports and update status for any item posted on the platform.</p>
+      </div>
+      <div class="btn-group" role="group" aria-label="Admin view tabs">
+        <a href="/dashboard?view=all" class="btn btn-outline-primary <%= adminFilters.view === 'all' ? 'active' : '' %>">All</a>
+        <a href="/dashboard?view=lost" class="btn btn-outline-primary <%= adminFilters.view === 'lost' ? 'active' : '' %>">Lost</a>
+        <a href="/dashboard?view=found" class="btn btn-outline-primary <%= adminFilters.view === 'found' ? 'active' : '' %>">Found</a>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="tag">Total: <%= adminStats.total %></span>
+        <span class="tag">Lost: <%= adminStats.lost %></span>
+        <span class="tag">Found: <%= adminStats.found %></span>
+        <span class="tag">Returned: <%= adminStats.resolved %></span>
+        <span class="tag">Active: <%= adminStats.active %></span>
+      </div>
+
+      <% if (adminItems && adminItems.length) { %>
+      <div class="cards-grid">
+        <% adminItems.slice(0, 12).forEach((item) => { %>
+        <div class="item-card h-100 reveal">
+          <% if (item.photoPath) { %>
+          <img src="<%= item.photoPath %>" class="card-img-top" alt="Item photo" />
+          <% } else { %>
+          <div class="card-img-top bg-secondary text-white p-4 text-center">
+            <i class="bi bi-camera" style="font-size: 2rem"></i>
+            <div class="small mt-2">No photo provided</div>
+          </div>
+          <% } %>
+          <div class="card-body d-flex flex-column">
+            <% const itemStatus = item.status || 'reported'; %>
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div>
+                <h5 class="card-title mb-1"><%= item.name %></h5>
+                <div class="small text-muted">Posted by <%= item.reportedByName %></div>
+              </div>
+              <span class="status-pill status-<%= item.type %>"><%= item.type %></span>
+            </div>
+            <p class="text-muted mb-2"><i class="bi bi-geo-alt me-1"></i><%= item.location %></p>
+            <p class="small text-muted mb-3">
+              <i class="bi bi-calendar-event me-1"></i><%= new Date(item.createdAt).toLocaleDateString() %>
+            </p>
+            <div class="mt-auto d-flex flex-column gap-2">
+              <form method="post" action="/items/<%= item.id %>/status" class="d-flex gap-2">
+                <input type="hidden" name="status" value="<%= item.status === 'resolved' ? 'reported' : 'resolved' %>" />
+                <button class="btn btn-sm <%= item.status === 'resolved' ? 'btn-outline-secondary' : 'btn-outline-success' %>" type="submit">
+                  <%= item.status === 'resolved' ? 'Mark active' : 'Mark returned' %>
+                </button>
+                <a href="/items/<%= item.id %>" class="btn btn-sm btn-outline-primary">View details</a>
+              </form>
+              <span class="status-pill status-<%= itemStatus %>"><%= itemStatus === 'resolved' ? 'Returned' : itemStatus %></span>
+            </div>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+      <% } else { %>
+      <div class="empty-state">No items to moderate for this view.</div>
+      <% } %>
+    </div>
+  </div>
+</section>
+<% } %>

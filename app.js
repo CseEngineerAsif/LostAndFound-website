@@ -1,3 +1,9 @@
+const util = require('util');
+// Prevent deprecated util.isArray warnings from older dependencies.
+if (typeof util.isArray === 'function') {
+  util.isArray = Array.isArray;
+}
+
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
@@ -43,6 +49,16 @@ app.use(flash());
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
   res.locals.messages = req.flash();
+  res.locals.currentPath = req.path;
+  res.locals.currentSection = (() => {
+    if (req.path === '/') return 'home';
+    if (req.path.startsWith('/items/search')) return 'feed';
+    if (req.path.startsWith('/items/report')) return 'report';
+    if (req.path.startsWith('/items/lost')) return 'lost';
+    if (req.path.startsWith('/items/found')) return 'found';
+    if (req.path.startsWith('/dashboard')) return 'dashboard';
+    return '';
+  })();
   next();
 });
 

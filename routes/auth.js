@@ -21,7 +21,7 @@ router.post('/register', async (req, res) => {
 
   try {
     const user = await userModel.createUser({ name, email, studentId, password });
-    req.session.user = { id: user.id, email: user.email, name: user.name };
+    req.session.user = { id: user.id, email: user.email, name: user.name, role: user.role || 'user' };
     req.flash('success', 'Welcome! Your account has been created.');
     res.redirect('/dashboard');
   } catch (err) {
@@ -49,7 +49,7 @@ router.post('/login', async (req, res) => {
     return res.redirect('/auth/login');
   }
 
-  req.session.user = { id: user.id, email: user.email, name: user.name };
+  req.session.user = { id: user.id, email: user.email, name: user.name, role: user.role || 'user' };
   req.flash('success', 'Logged in successfully');
   res.redirect('/dashboard');
 });

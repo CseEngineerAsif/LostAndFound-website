@@ -132,6 +132,26 @@ async function findSimilarItems(sourceItem, limit = 3) {
     .slice(0, limit);
 }
 
+async function deleteItem(id) {
+  await db.read();
+  const items = db.data?.items || [];
+  const index = items.findIndex((item) => item.id === Number(id));
+  if (index === -1) return false;
+  items.splice(index, 1);
+  await db.write();
+  return true;
+}
+
+async function updateItem(id, updates) {
+  await db.read();
+  const item = (db.data?.items || []).find((row) => row.id === Number(id));
+  if (!item) return null;
+  Object.assign(item, updates);
+  item.updatedAt = new Date().toISOString();
+  await db.write();
+  return item;
+}
+
 module.exports = {
   createItem,
   findRecentItems,
@@ -139,6 +159,8 @@ module.exports = {
   searchItems,
   findByUserId,
   updateStatus,
+  deleteItem,
+  updateItem,
   getStats,
   getUserStats,
   findSimilarItems,

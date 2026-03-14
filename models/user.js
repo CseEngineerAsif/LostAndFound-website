@@ -8,18 +8,26 @@ function getNextId(list) {
   return Math.max(...list.map((row) => row.id || 0)) + 1;
 }
 
-async function createUser({ email, studentId, name, password }) {
+async function createUser({ email, studentId, name, password, role = 'user' }) {
   await db.read();
   db.data = db.data || { users: [], items: [] };
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
   const id = getNextId(db.data.users);
-  const user = { id, email, studentId, name, passwordHash, createdAt: new Date().toISOString() };
+  const user = {
+    id,
+    email,
+    studentId,
+    name,
+    passwordHash,
+    role,
+    createdAt: new Date().toISOString(),
+  };
 
   db.data.users.push(user);
   await db.write();
 
-  return { id, email, studentId, name };
+  return { id, email, studentId, name, role };
 }
 
 async function findByEmail(email) {

@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const itemModel = require('../models/item');
+const { getFeaturedItem } = require('../data/featured-items');
 
 const router = express.Router();
 
@@ -28,7 +29,8 @@ function requireLogin(req, res, next) {
 }
 
 router.get('/report', requireLogin, (req, res) => {
-  res.render('report', { title: 'Post Item', prefillType: req.query.type || '' });
+  const prefillType = req.query.type === 'found' ? 'found' : 'lost';
+  res.render('report', { title: 'Post Item', prefillType });
 });
 
 router.post('/report', requireLogin, upload.single('photo'), async (req, res) => {
@@ -60,7 +62,8 @@ router.post('/report', requireLogin, upload.single('photo'), async (req, res) =>
   });
 
   req.flash('success', 'Item reported successfully.');
-  res.redirect('/items/search');
+  const redirectUrl = type === 'found' ? '/items/found' : '/items/lost';
+  res.redirect(redirectUrl);
 });
 
 router.get('/search', async (req, res) => {
@@ -81,20 +84,90 @@ router.get('/search', async (req, res) => {
   });
 });
 
+router.get('/lost', async (req, res) => {
+  const { q, category, location, status, sort, date } = req.query;
+  const items = await itemModel.searchItems({
+    query: q,
+    category,
+    location,
+    type: 'lost',
+    status,
+    date,
+    sort: sort || 'newest',
+  });
+  res.render('lost', {
+    title: 'Lost Items',
+    items,
+    filters: { q, category, location, type: 'lost', status, sort: sort || 'newest', date },
+  });
+});
+
+router.get('/found', async (req, res) => {
+  const { q, category, location, status, sort, date } = req.query;
+  const items = await itemModel.searchItems({
+    query: q,
+    category,
+    location,
+    type: 'found',
+    status,
+    date,
+    sort: sort || 'newest',
+  });
+  res.render('found', {
+    title: 'Found Items',
+    items,
+    filters: { q, category, location, type: 'found', status, sort: sort || 'newest', date },
+  });
+});
+
+router.get('/featured/:slug', (req, res) => {
+  const featured = getFeaturedItem(req.params.slug);
+  if (!featured) return res.status(404).render('404', { title: 'Not Found' });
+
+  const item = {
+    id: `featured-${featured.slug}`,
+    name: featured.name,
+    type: featured.type,
+    status: featured.status,
+    category: featured.category,
+    location: featured.location,
+    dateLost: featured.dateLost,
+    contactMethod: featured.contactMethod,
+    anonymous: featured.anonymous,
+    reportedByName: featured.reportedByName,
+    description: featured.description,
+    photoPath: featured.photoPath,
+    createdAt: new Date().toISOString(),
+    updatedAt: null,
+    userId: 0,
+  };
+
+  res.render('item', { title: featured.name, item, isOwner: false, matches: [] });
+});
+
 router.get('/:id', async (req, res) => {
   const item = await itemModel.findById(req.params.id);
   if (!item) return res.status(404).render('404', { title: 'Not Found' });
   const isOwner = req.session.user && req.session.user.id === item.userId;
   const matches = await itemModel.findSimilarItems(item, 3);
-  res.render('item', { title: item.name, item, isOwner, matches });
+  res.render('item', { 
+    title: item.name, 
+    item, 
+    isOwner, 
+    matches, 
+    currentUser: req.session.user || null,
+    editMode: req.query.edit === 'true'
+  });
 });
 
 router.post('/:id/status', requireLogin, async (req, res) => {
   const item = await itemModel.findById(req.params.id);
   if (!item) return res.status(404).render('404', { title: 'Not Found' });
 
-  if (item.userId !== req.session.user.id) {
-    req.flash('error', 'You can only update your own reports.');
+  const isOwner = item.userId === req.session.user.id;
+  const isAdmin = req.session.user && req.session.user.role === 'admin';
+  if (!isOwner && !isAdmin) {
+    req.flash('error', 'You do not have permission to update this report.');
     return res.redirect(`/items/${item.id}`);
   }
 
@@ -107,6 +180,63 @@ router.post('/:id/status', requireLogin, async (req, res) => {
 
   await itemModel.updateStatus(item.id, status);
   req.flash('success', 'Status updated successfully.');
+  res.redirect(`/items/${item.id}`);
+});
+
+router.post('/:id/delete', requireLogin, async (req, res) => {
+  const isAdmin = req.session.user && req.session.user.role === 'admin';
+  if (!isAdmin) {
+    req.flash('error', 'Only admins can delete reports.');
+    return res.redirect('/dashboard');
+  }
+
+  const success = await itemModel.deleteItem(req.params.id);
+  if (!success) {
+    req.flash('error', 'Report not found.');
+    return res.redirect('/dashboard');
+  }
+
+  req.flash('success', 'Report deleted successfully.');
+  res.redirect('/dashboard');
+});
+
+router.post('/:id/update', requireLogin, upload.single('photo'), async (req, res) => {
+  const item = await itemModel.findById(req.params.id);
+  if (!item) return res.status(404).render('404', { title: 'Not Found' });
+
+  const isOwner = item.userId === req.session.user.id;
+  const isAdmin = req.session.user && req.session.user.role === 'admin';
+  if (!isOwner && !isAdmin) {
+    req.flash('error', 'You do not have permission to update this report.');
+    return res.redirect(`/items/${item.id}`);
+  }
+
+  const {
+    type,
+    name,
+    description,
+    location,
+    dateLost,
+    category,
+    contactMethod,
+    anonymous,
+  } = req.body;
+
+  const photoPath = req.file ? `/uploads/${req.file.filename}` : item.photoPath;
+
+  await itemModel.updateItem(req.params.id, {
+    type,
+    name,
+    description,
+    location,
+    dateLost,
+    category,
+    contactMethod,
+    anonymous: anonymous === 'true',
+    photoPath,
+  });
+
+  req.flash('success', 'Item updated successfully.');
   res.redirect(`/items/${item.id}`);
 });
 

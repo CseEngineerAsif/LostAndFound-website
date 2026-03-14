@@ -1,0 +1,160 @@
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card shadow-sm reveal">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between">
+          <div>
+            <h2 class="card-title mb-2">Submit a Report</h2>
+            <p class="text-muted mb-4">
+              Share clear details so the right person can confirm a match quickly.
+            </p>
+          </div>
+          <span class="badge badge-soft">Step 1 of 2</span>
+        </div>
+        <form
+          method="post"
+          action="/items/report"
+          enctype="multipart/form-data"
+        >
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Report type</label>
+              <% if (prefillType === 'lost') { %>
+              <input type="hidden" name="type" value="lost" />
+              <input type="text" class="form-control" value="Lost" readonly />
+              <% } else { %>
+              <select name="type" class="form-select" required>
+                <option value="lost" <%= prefillType === 'lost' ? 'selected' : '' %>>Lost</option>
+                <option value="found" <%= prefillType === 'found' ? 'selected' : '' %>>Found</option>
+              </select>
+              <% } %>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Category</label>
+              <select name="category" class="form-select" required>
+                <option value="Phone">Phone</option>
+                <option value="Wallet">Wallet</option>
+                <option value="Bag">Bag</option>
+                <option value="ID Card">ID Card</option>
+                <option value="Educational Tool">Educationa Tool</option>
+                <option value="Books">Books</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Item name</label>
+            <input type="text" name="name" class="form-control" required />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea
+              name="description"
+              class="form-control"
+              rows="4"
+              placeholder="Color, brand, unique stickers, or serial numbers"
+            ></textarea>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Location</label>
+              <input
+                type="text"
+                name="location"
+                class="form-control"
+                required
+              />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date lost/found</label>
+              <input
+                type="date"
+                name="dateLost"
+                class="form-control"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="row g-3 mt-1">
+            <div class="col-md-6">
+              <label class="form-label">Contact method</label>
+              <input
+                type="text"
+                name="contactMethod"
+                class="form-control"
+                placeholder="Email or phone"
+                required
+              />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Post as</label>
+              <select name="anonymous" class="form-select">
+                <option value="false">Show my name</option>
+                <option value="true">Anonymous</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3 mt-3">
+            <label class="form-label">Upload image</label>
+            <input
+              type="file"
+              name="photo"
+              accept="image/*"
+              class="form-control"
+              id="photoInput"
+            />
+            <img
+              id="photoPreview"
+              class="img-fluid mt-3 rounded d-none"
+              alt="Preview"
+            />
+          </div>
+
+          <button class="btn btn-primary w-100" type="submit">
+            <i class="bi bi-send me-2"></i>Submit Report
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card sidebar-card p-4 reveal">
+      <h5 class="mb-3">Report tips</h5>
+      <ul class="list-unstyled d-grid gap-3">
+        <li class="d-flex gap-2">
+          <span class="tag"><i class="bi bi-check2-circle"></i></span>
+          <div>
+            <strong>Be specific</strong>
+            <p class="text-muted mb-0">Add colors, brands, and any unique markings.</p>
+          </div>
+        </li>
+        <li class="d-flex gap-2">
+          <span class="tag"><i class="bi bi-calendar-check"></i></span>
+          <div>
+            <strong>Include date &amp; location</strong>
+            <p class="text-muted mb-0">The closest match is often time-sensitive.</p>
+          </div>
+        </li>
+        <li class="d-flex gap-2">
+          <span class="tag"><i class="bi bi-shield-lock"></i></span>
+          <div>
+            <strong>Meet safely</strong>
+            <p class="text-muted mb-0">Arrange exchanges at campus security or public areas.</p>
+          </div>
+        </li>
+      </ul>
+      <div class="mt-4 p-3 rounded" style="background: rgba(26, 166, 160, 0.1);">
+        <strong class="d-block mb-1">AI match preview</strong>
+        <span class="text-muted">We will suggest likely matches after posting.</span>
+        <a href="/items/search" class="btn btn-outline-primary w-100 mt-3">Browse listings</a>
+      </div>
+    </div>
+  </div>
+</div>

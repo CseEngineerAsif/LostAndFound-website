@@ -129,14 +129,134 @@
   </div>
 </section>
 
+<% if (currentUser && currentUser.role === 'admin') { %>
 <section class="section pt-0">
   <div class="card p-4">
-    <div class="d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
       <div>
         <h5 class="mb-1">Admin moderation panel</h5>
-        <p class="text-muted mb-0">Review flagged reports and verify claims (coming soon).</p>
+        <p class="text-muted mb-0">Filter reports and update status for any item posted on the platform.</p>
       </div>
-      <button class="btn btn-outline-primary" disabled>Open panel</button>
+      <div class="btn-group" role="group" aria-label="Admin view tabs">
+        <a href="/dashboard?view=all" class="btn btn-outline-primary <%= adminFilters.view === 'all' ? 'active' : '' %>">All</a>
+        <a href="/dashboard?view=lost" class="btn btn-outline-primary <%= adminFilters.view === 'lost' ? 'active' : '' %>">Lost</a>
+        <a href="/dashboard?view=found" class="btn btn-outline-primary <%= adminFilters.view === 'found' ? 'active' : '' %>">Found</a>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <form class="row g-3 mb-3" method="get" action="/dashboard">
+        <input type="hidden" name="view" value="<%= adminFilters.view %>" />
+        <div class="col-md-3">
+          <input
+            type="text"
+            name="q"
+            class="form-control"
+            placeholder="Search reports"
+            value="<%= adminFilters.q || '' %>"
+          />
+        </div>
+        <div class="col-md-2">
+          <select name="category" class="form-select">
+            <option value="">All categories</option>
+            <option value="Phone" <%= adminFilters.category === 'Phone' ? 'selected' : '' %>>Phone</option>
+            <option value="Wallet" <%= adminFilters.category === 'Wallet' ? 'selected' : '' %>>Wallet</option>
+            <option value="Bag" <%= adminFilters.category === 'Bag' ? 'selected' : '' %>>Bag</option>
+            <option value="ID Card" <%= adminFilters.category === 'ID Card' ? 'selected' : '' %>>ID Card</option>
+            <option value="Books" <%= adminFilters.category === 'Books' ? 'selected' : '' %>>Books</option>
+            <option value="Electronics" <%= adminFilters.category === 'Electronics' ? 'selected' : '' %>>Electronics</option>
+            <option value="Others" <%= adminFilters.category === 'Others' ? 'selected' : '' %>>Others</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <select name="status" class="form-select">
+            <option value="">Any status</option>
+            <option value="reported" <%= adminFilters.status === 'reported' ? 'selected' : '' %>>Reported</option>
+            <option value="resolved" <%= adminFilters.status === 'resolved' ? 'selected' : '' %>>Returned</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-primary w-100" type="submit">Filter</button>
+        </div>
+        <div class="col-md-2">
+          <a href="/dashboard?view=<%= adminFilters.view %>" class="btn btn-ghost w-100">Clear</a>
+        </div>
+      </form>
+
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="tag">Total: <%= adminStats.total %></span>
+        <span class="tag">Lost: <%= adminStats.lost %></span>
+        <span class="tag">Found: <%= adminStats.found %></span>
+        <span class="tag">Returned: <%= adminStats.resolved %></span>
+        <span class="tag">Active: <%= adminStats.active %></span>
+      </div>
+
+      <% if (adminItems && adminItems.length) { %>
+      <div class="cards-grid">
+        <% adminItems.forEach((item) => { %>
+        <div class="item-card h-100 reveal">
+          <% if (item.photoPath) { %>
+          <img src="<%= item.photoPath %>" class="card-img-top" alt="Item photo" />
+          <% } else { %>
+          <div class="card-img-top bg-secondary text-white p-4 text-center">
+            <i class="bi bi-camera" style="font-size: 2rem"></i>
+            <div class="small mt-2">No photo provided</div>
+          </div>
+          <% } %>
+          <div class="card-body d-flex flex-column">
+            <% const itemStatus = item.status || 'reported'; %>
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div>
+                <h5 class="card-title mb-1"><%= item.name %></h5>
+                <div class="small text-muted">Posted by <%= item.reportedByName %></div>
+              </div>
+              <span class="status-pill status-<%= item.type %>"><%= item.type %></span>
+            </div>
+            <p class="text-muted mb-2"><i class="bi bi-geo-alt me-1"></i><%= item.location %></p>
+            <p class="small text-muted mb-3">
+              <i class="bi bi-calendar-event me-1"></i><%= new Date(item.createdAt).toLocaleDateString() %>
+            </p>
+            <div class="mt-auto d-flex flex-column gap-2">
+              <form method="post" action="/items/<%= item.id %>/status" class="d-flex gap-2">
+                <input type="hidden" name="status" value="<%= item.status === 'resolved' ? 'reported' : 'resolved' %>" />
+                <button class="btn btn-sm <%= item.status === 'resolved' ? 'btn-outline-secondary' : 'btn-outline-success' %>" type="submit">
+                  <%= item.status === 'resolved' ? 'Mark active' : 'Mark returned' %>
+                </button>
+                <a href="/items/<%= item.id %>" class="btn btn-sm btn-outline-primary">View details</a>
+              </form>
+              <form method="post" action="/items/<%= item.id %>/delete" onsubmit="return confirm('Delete this report permanently?');" class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+              </form>
+              <span class="status-pill status-<%= itemStatus %>"><%= itemStatus === 'resolved' ? 'Returned' : itemStatus %></span>
+            </div>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mt-4">
+        <div class="text-muted">
+          Showing <%= adminPagination.page %> of <%= adminPagination.totalPages %> ( <%= adminPagination.totalItems %> items )
+        </div>
+        <div class="btn-group" role="group">
+          <a
+            href="/dashboard?view=<%= adminFilters.view %>&q=<%= encodeURIComponent(adminFilters.q || '') %>&category=<%= encodeURIComponent(adminFilters.category || '') %>&status=<%= encodeURIComponent(adminFilters.status || '') %>&page=<%= Math.max(1, adminPagination.page - 1) %>&perPage=<%= adminPagination.perPage %>"
+            class="btn btn-ghost <%= adminPagination.page === 1 ? 'disabled' : '' %>"
+          >
+            Previous
+          </a>
+          <a
+            href="/dashboard?view=<%= adminFilters.view %>&q=<%= encodeURIComponent(adminFilters.q || '') %>&category=<%= encodeURIComponent(adminFilters.category || '') %>&status=<%= encodeURIComponent(adminFilters.status || '') %>&page=<%= Math.min(adminPagination.totalPages, adminPagination.page + 1) %>&perPage=<%= adminPagination.perPage %>"
+            class="btn btn-ghost <%= adminPagination.page === adminPagination.totalPages ? 'disabled' : '' %>"
+          >
+            Next
+          </a>
+        </div>
+      </div>
+      <% } else { %>
+      <div class="empty-state">No items to moderate for this view.</div>
+      <% } %>
     </div>
   </div>
 </section>
+<% } %>
