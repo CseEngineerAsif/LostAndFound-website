@@ -13,7 +13,6 @@ function requireLogin(req, res, next) {
 router.get('/', requireLogin, async (req, res) => {
   const userId = req.session.user.id;
   let myItems = [];
-  let claimRequests = [];
 
   try {
     // Fetch items reported by the current user
@@ -22,10 +21,6 @@ router.get('/', requireLogin, async (req, res) => {
     } else {
       console.warn('itemModel.getItemsByUser is not defined. Dashboard items may not load.');
     }
-
-    if (typeof itemModel.getClaimRequestsForOwner === 'function') {
-      claimRequests = await itemModel.getClaimRequestsForOwner(userId);
-    }
   } catch (err) {
     console.error('Error fetching dashboard items:', err);
   }
@@ -33,7 +28,6 @@ router.get('/', requireLogin, async (req, res) => {
   res.render('dashboard', {
     title: 'Dashboard',
     myItems,
-    claimRequests,
     user: req.session.user
   });
 });

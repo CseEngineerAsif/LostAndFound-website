@@ -18,6 +18,7 @@ exports.createMessage = async (msg) => {
   const newMessage = {
     id: Date.now().toString(),
     createdAt: new Date().toISOString(),
+    readByRecipient: false,
     ...msg
   };
   db.messages = db.messages || [];
@@ -30,29 +31,34 @@ exports.getConversations = async (userId) => {
   const db = getDb();
   const messages = db.messages || [];
   const conversationMap = new Map();
+  const uId = String(userId);
 
   messages.forEach(m => {
     const sId = String(m.senderId);
     const rId = String(m.recipientId);
-    const uId = String(userId);
 
     if (sId === uId || rId === uId) {
       const otherId = sId === uId ? rId : sId;
       const otherName = sId === uId ? m.recipientName : m.senderName;
-      
+      const isUnreadForUser = rId === uId && sId === otherId && m.readByRecipient !== true;
+
       if (!conversationMap.has(otherId)) {
         conversationMap.set(otherId, {
           userId: otherId,
           name: otherName || 'User',
-          lastMessage: m.content,
-          timestamp: m.createdAt
+          lastMessage: { content: m.content, createdAt: m.createdAt },
+          timestamp: m.createdAt,
+          unreadCount: isUnreadForUser ? 1 : 0
         });
       } else {
         const conv = conversationMap.get(otherId);
         if (new Date(m.createdAt) > new Date(conv.timestamp)) {
-          conv.lastMessage = m.content;
+          conv.lastMessage = { content: m.content, createdAt: m.createdAt };
           conv.timestamp = m.createdAt;
           conv.name = otherName || conv.name;
+        }
+        if (isUnreadForUser) {
+          conv.unreadCount += 1;
         }
       }
     }
@@ -72,4 +78,25 @@ exports.getMessages = async (userId, otherId) => {
       (String(m.senderId) === oId && String(m.recipientId) === uId)
     )
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+};
+
+exports.markConversationRead = async (userId, otherId) => {
+  const db = getDb();
+  const uId = String(userId);
+  const oId = String(otherId);
+  let changed = false;
+
+  db.messages = db.messages || [];
+  db.messages.forEach(m => {
+    if (String(m.recipientId) === uId && String(m.senderId) === oId) {
+      if (m.readByRecipient !== true) {
+        m.readByRecipient = true;
+        changed = true;
+      }
+    }
+  });
+
+  if (changed) {
+    saveDb(db);
+  }
 };

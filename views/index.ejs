@@ -1,6 +1,7 @@
 <%
   const itemsList = items || [];
   const foundItems = itemsList.filter((item) => item.type === 'found');
+  const lostItems = itemsList.filter((item) => item.type === 'lost');
   const returnedItems = itemsList.filter((item) => item.status === 'resolved');
   const activeItems = itemsList.filter((item) => item.status !== 'resolved');
   const featuredFound = featuredItems && featuredItems.length
@@ -13,6 +14,9 @@
         { slug: 'calculator', name: 'Calculator', location: 'Engineering Block', dateLost: '2026-03-06', category: 'Electronics', type: 'found', photoPath: '/images/item-calculator.jpeg' },
         { slug: 'textbook-jac', name: 'Textbook: Jac', location: 'Lecture Hall B', dateLost: '2026-03-05', category: 'Books', type: 'found', photoPath: '/images/item-book.jpeg' },
       ];
+
+  const recentFound = foundItems.slice(0, 6);
+  const recentLost = lostItems.slice(0, 6);
 %>
 
 <section class="hero-landing full-bleed">
@@ -66,12 +70,15 @@
 </section>
 
 <section class="section">
-  <div class="section-heading">
-    <h2>Recently Found Items</h2>
-    <p>Check the latest items turned in by students, faculty, and staff.</p>
+  <div class="section-heading section-heading--row">
+    <div>
+      <h2>Recently Found Items</h2>
+      <p>Check the latest items turned in by students, faculty, and staff.</p>
+    </div>
+    <a href="/items/found" class="btn btn-ghost btn-sm">See more</a>
   </div>
   <div class="featured-grid">
-    <% featuredFound.forEach((item) => { %>
+    <% (recentFound.length ? recentFound : featuredFound).forEach((item) => { %>
     <article class="item-card reveal">
       <div class="item-image">
         <% if (item.photoPath) { %>
@@ -89,7 +96,7 @@
           <div><i class="bi bi-geo-alt me-1"></i><%= item.location || 'Campus' %></div>
           <div><i class="bi bi-calendar-event me-1"></i><%= item.dateLost || 'Recent' %></div>
         </div>
-        <% const detailsLink = item.slug ? '/items/featured/' + item.slug : '/items/search'; %>
+        <% const detailsLink = item.id ? '/items/' + item.id : (item.slug ? '/items/featured/' + item.slug : '/items/found'); %>
         <a href="<%= detailsLink %>" class="btn btn-outline-primary btn-sm">View details</a>
       </div>
     </article>
@@ -97,6 +104,46 @@
   </div>
 </section>
 
+
+<section class="section">
+  <div class="section-heading section-heading--row">
+    <div>
+      <h2>Recently Lost Items</h2>
+      <p>See what students are currently searching for around campus.</p>
+    </div>
+    <a href="/items/lost" class="btn btn-ghost btn-sm">See more</a>
+  </div>
+  <div class="featured-grid">
+    <% (recentLost.length ? recentLost : []).forEach((item) => { %>
+    <article class="item-card reveal">
+      <div class="item-image">
+        <% if (item.photoPath) { %>
+        <img src="<%= item.photoPath %>" alt="<%= item.name %>" />
+        <% } else { %>
+        <i class="bi bi-camera" style="font-size: 2rem; color: rgba(11, 31, 42, 0.6);"></i>
+        <% } %>
+      </div>
+      <div class="item-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><%= item.name %></h5>
+          <span class="status-pill status-lost">Lost</span>
+        </div>
+        <div class="item-meta">
+          <div><i class="bi bi-geo-alt me-1"></i><%= item.location || 'Campus' %></div>
+          <div><i class="bi bi-calendar-event me-1"></i><%= item.dateLost || 'Recent' %></div>
+        </div>
+        <a href="/items/<%= item.id %>" class="btn btn-outline-primary btn-sm">View details</a>
+      </div>
+    </article>
+    <% }) %>
+
+    <% if (!recentLost.length) { %>
+      <div class="empty-state w-100">
+        <p class="text-muted mb-0">No recent lost items yet.</p>
+      </div>
+    <% } %>
+  </div>
+</section>
 <section class="section">
   <div class="section-heading center">
     <h2>How It Works</h2>

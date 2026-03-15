@@ -70,37 +70,11 @@ app.use((req, res, next) => {
   next();
 });
 
-const shouldLogChat = process.env.NODE_ENV !== 'production';
-const logChat = (...args) => {
-  if (shouldLogChat) console.log(...args);
-};
-
 io.on('connection', (socket) => {
-  logChat('A user connected:', socket.id);
-
   // The client sends 'user online' with their ID. We can use this to join a private room.
   socket.on('user online', (userId) => {
     if (userId) {
       socket.join(String(userId));
-      logChat(`User ${userId} joined their private room.`);
-    }
-  });
-
-
-  socket.on('typing', (data) => {
-    if (data && data.recipientId) {
-      socket.to(String(data.recipientId)).emit('typing', {
-        senderId: data.senderId,
-        senderName: data.senderName
-      });
-    }
-  });
-
-  socket.on('stop typing', (data) => {
-    if (data && data.recipientId) {
-      socket.to(String(data.recipientId)).emit('stop typing', {
-        senderId: data.senderId
-      });
     }
   });
 
@@ -117,9 +91,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('disconnect', () => {
-    logChat('User disconnected:', socket.id);
-  });
 });
 
 app.use('/', indexRoutes);

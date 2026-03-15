@@ -144,11 +144,9 @@
           <% } else if (!currentUser) { %>
             <a href="/auth/login" class="btn btn-primary"><i class="bi bi-chat-dots me-1"></i>Login to Chat</a>
           <% } %>
-          <% if (currentUser && String(currentUser.id) !== String(item.userId)) { %>
-            <button class="btn btn-ghost" data-bs-toggle="modal" data-bs-target="#claimModal">
-              <i class="bi bi-check-circle me-1"></i>Report as claimed
-            </button>
-          <% } %>
+          <button class="btn btn-ghost">
+            <i class="bi bi-check-circle me-1"></i>Report as claimed
+          </button>
         </div>
       </div>
       <% } %>
@@ -210,72 +208,119 @@
 </div>
 
 <% if (currentUser && String(currentUser.id) !== String(item.userId)) { %>
-<!-- Claim Modal -->
-<div class="modal fade" id="claimModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Submit a claim</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form method="post" action="/items/<%= item.id %>/claim" enctype="multipart/form-data">
-        <div class="modal-body">
-          <p class="text-muted small mb-3">Provide a short description or a photo proving ownership (e.g., unique mark, sticker, or detail).</p>
-          <div class="mb-3">
-            <label class="form-label">Description</label>
-            <textarea name="description" class="form-control" rows="3" placeholder="Describe a unique detail..."></textarea>
-          </div>
-          <div class="mb-2">
-            <label class="form-label">Proof photo (optional)</label>
-            <input type="file" name="proof" class="form-control" accept="image/*">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Send claim request</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-<% } %>
-
-<% if (currentUser && String(currentUser.id) !== String(item.userId)) { %>
 <!-- Chat Popup -->
 <div id="chat-container" class="chat-container">
   <div id="chat-overlay" class="chat-overlay"></div>
   <div id="chat-popup" class="chat-popup">
-    <div class="chat-popup-card chat-theme">
-      <div class="chat-popup-header">
-        <div class="chat-popup-title">
-          <div class="chat-popup-avatar">
+    <div class="card shadow-sm h-100 border-0">
+      <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">
             <%= item.reportedByName ? item.reportedByName.charAt(0).toUpperCase() : 'U' %>
           </div>
           <div>
             <h5 class="mb-0 text-truncate" style="max-width: 200px;"><%= item.reportedByName || 'User' %></h5>
             <small class="text-muted">Re: <%= item.name %></small>
-            <div id="chat-popup-typing" class="chat-typing"></div>
           </div>
         </div>
-        <button id="close-chat-btn" type="button" class="chat-popup-close" aria-label="Close chat">
-          <i class="bi bi-x-lg"></i>
-        </button>
+        <button id="close-chat-btn" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-lg"></i></button>
       </div>
       
-      <div id="chat-box" class="chat-popup-body">
+      <div id="chat-box" class="card-body bg-light" style="height: 100%; overflow-y: auto;">
           <!-- Chat history will be loaded here via JavaScript -->
       </div>
 
-      <div class="chat-popup-footer">
-        <form id="popup-chat-form" action="/items/<%= item.id %>/chat" method="POST" class="chat-popup-form" data-username="<%= currentUser ? currentUser.name : 'Anonymous' %>">
-          <input type="text" name="message" class="form-control chat-popup-input" placeholder="Type a message..." required autocomplete="off">
-          <button type="submit" class="chat-popup-send" aria-label="Send message">
-            <i class="bi bi-send-fill"></i>
-          </button>
+      <div class="card-footer bg-white py-3">
+        <form id="popup-chat-form" action="/items/<%= item.id %>/chat" method="POST" class="d-flex gap-2" data-username="<%= currentUser ? currentUser.name : 'Anonymous' %>">
+          <input type="text" name="message" class="form-control" placeholder="Type a message..." required autocomplete="off">
+          <button type="submit" class="btn btn-primary"><i class="bi bi-send-fill"></i></button>
         </form>
       </div>
     </div>
   </div>
 </div>
 
+<style>
+  .chat-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1050;
+    pointer-events: none;
+  }
+  .chat-container.is-open {
+    pointer-events: auto;
+  }
+  .chat-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .chat-container.is-open .chat-overlay {
+    opacity: 1;
+  }
+  .chat-popup {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    max-width: 420px;
+    height: 100%;
+    background-color: #fff;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+  }
+  .chat-container.is-open .chat-popup {
+    transform: translateX(0);
+  }
+  body.chat-open {
+    overflow: hidden;
+  }
+
+  /* Chat Bubbles */
+  .message-wrapper {
+    display: flex;
+    margin-bottom: 0.5rem;
+    width: 100%;
+  }
+
+  .message-wrapper.sent {
+    justify-content: flex-end;
+  }
+
+  .message-wrapper.received {
+    justify-content: flex-start;
+  }
+
+  .message-bubble {
+    max-width: 75%;
+    padding: 0.5rem 1rem;
+    border-radius: 1.25rem;
+    word-wrap: break-word;
+    position: relative;
+  }
+
+  .message-wrapper.sent .message-bubble {
+    background-color: #0d6efd;
+    color: white;
+    border-bottom-right-radius: 0.25rem;
+  }
+
+  .message-wrapper.received .message-bubble {
+    background-color: #f1f5f9;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-bottom-left-radius: 0.25rem;
+  }
+</style>
+<script src="/socket.io/socket.io.js"></script>
 <% } %>

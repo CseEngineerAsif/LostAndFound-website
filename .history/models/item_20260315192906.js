@@ -103,63 +103,6 @@ async function updateStatus(id, status) {
   return item;
 }
 
-async function addClaim(itemId, claim) {
-  await db.read();
-  const item = (db.data?.items || []).find((row) => row.id === Number(itemId));
-  if (!item) return null;
-  item.claims = item.claims || [];
-  item.claims.push(claim);
-  item.status = 'pending_claim';
-  item.updatedAt = new Date().toISOString();
-  await db.write();
-  return claim;
-}
-
-async function updateClaimStatus(itemId, claimId, status) {
-  await db.read();
-  const item = (db.data?.items || []).find((row) => row.id === Number(itemId));
-  if (!item || !item.claims) return null;
-
-  const claim = item.claims.find((c) => String(c.id) === String(claimId));
-  if (!claim) return null;
-
-  claim.status = status;
-  claim.updatedAt = new Date().toISOString();
-
-  if (status === 'accepted') {
-    item.status = 'resolved';
-    item.updatedAt = new Date().toISOString();
-  } else if (status === 'denied') {
-    const hasPending = item.claims.some((c) => c.status === 'pending');
-    if (!hasPending) {
-      item.status = 'reported';
-      item.updatedAt = new Date().toISOString();
-    }
-  }
-
-  await db.write();
-  return claim;
-}
-
-async function getClaimRequestsForOwner(userId) {
-  await db.read();
-  const items = (db.data?.items || []).filter((item) => item.userId === userId);
-  const requests = [];
-  items.forEach((item) => {
-    (item.claims || [])
-      .filter((claim) => claim.status === 'pending')
-      .forEach((claim) => {
-        requests.push({
-          itemId: item.id,
-          itemName: item.name,
-          itemType: item.type,
-          claim,
-        });
-      });
-  });
-  return requests.sort((a, b) => new Date(b.claim.createdAt) - new Date(a.claim.createdAt));
-}
-
 async function getStats() {
   await db.read();
   const items = db.data?.items || [];
@@ -223,13 +166,10 @@ module.exports = {
   searchItems,
   findByUserId,
   updateStatus,
-  addClaim,
-  updateClaimStatus,
   deleteItem,
   updateItem,
   getStats,
   getUserStats,
   findSimilarItems,
   getItemsByUser,
-  getClaimRequestsForOwner,
 };

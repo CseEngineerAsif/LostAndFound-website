@@ -75,105 +75,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const userId = document.body.dataset.userId;
   const userName = document.body.dataset.userName || 'User';
 
-  // Chat DOM references (used for gating chat stream)
-  const chatContainer = document.getElementById('chat-container');
-  const openChatBtn = document.getElementById('open-chat-btn');
-  const closeChatBtn = document.getElementById('close-chat-btn');
-  const chatOverlay = document.getElementById('chat-overlay');
-  const popupChatForm = document.getElementById('popup-chat-form');
-  const chatShell = document.querySelector('.chat-shell');
-  const isChatRoute = window.location.pathname.startsWith('/chat');
-  const shouldEnableChat = Boolean(chatShell || chatContainer || openChatBtn || isChatRoute);
-
-  // Exit if EventSource is not available, user is not logged in, or chat UI is not present.
-  if (typeof EventSource === 'undefined' || !userId || !shouldEnableChat) {
+  // Exit if Socket.IO is not loaded or user is not logged in
+  if (typeof io === 'undefined' || !userId) {
     return;
   }
 
-  // --- 1. Establish a single, reusable SSE connection ---
-  const existingStream = window.__campusChatStream;
-  const stream = existingStream || new EventSource('/chat/stream');
-  if (!existingStream) {
-    window.__campusChatStream = stream;
-  }
+  // --- 1. Establish a single, reusable socket connection ---
+  const socket = io();
+  socket.emit('user online', userId);
 
   // --- 2. Helper Functions ---
 
-  function updateUnreadBadge(senderId) {
-    const listItem = document.querySelector(`.chat-list__item[data-user-id="${senderId}"]`);
-    if (!listItem) return;
-    let badge = listItem.querySelector('.chat-unread');
-    if (!badge) {
-      badge = document.createElement('span');
-      badge.className = 'chat-unread';
-      badge.textContent = '1';
-      const meta = listItem.querySelector('.chat-meta');
-      if (meta) {
-        meta.appendChild(badge);
-      } else {
-        listItem.appendChild(badge);
-      }
-      return;
-    }
-    const current = parseInt(badge.textContent || '0', 10);
-    badge.textContent = String(current + 1);
-  }
-
-  function updateConversationPreview(senderId, message, createdAt) {
-    const listItem = document.querySelector(`.chat-list__item[data-user-id="${senderId}"]`);
-    if (!listItem) return;
-    const preview = listItem.querySelector('p.text-muted');
-    if (preview) preview.textContent = message;
-    const date = listItem.querySelector('.chat-meta small');
-    if (date && createdAt) {
-      const dateObj = new Date(createdAt);
-      date.textContent = dateObj.toLocaleDateString();
-    }
-  }
-
-  async function markConversationRead(otherId) {
-    try {
-      await fetch('/chat/read', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ otherId })
-      });
-    } catch (err) {
-      console.error('Failed to mark read', err);
-    }
-  }
-
-  function setTypingIndicator(targetId, isTyping, isPopup) {
-    const el = isPopup ? document.getElementById('chat-popup-typing') : document.getElementById('chat-typing');
-    if (!el || !targetId) return;
-    if (isTyping) {
-      el.classList.add('is-active');
-    } else {
-      el.classList.remove('is-active');
-    }
-  }
-
-  async function sendTyping(recipientId, isTyping) {
-    if (!recipientId) return;
-    try {
-      await fetch(isTyping ? '/chat/typing' : '/chat/stop-typing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipientId })
-      });
-    } catch (err) {
-      console.error('Typing update failed', err);
-    }
-  }
-
   /**
    * Appends a chat message to the chat box UI.
+   * Differentiates between sent ('You') and received (sender's ID) messages.
    */
   function appendChatMessage(sender, message) {
     const chatBox = document.getElementById('chat-box');
     if (!chatBox) return;
 
     const messageElement = document.createElement('div');
+    // 'sender' will be 'You' for outgoing, or the sender's ID for incoming.
     const isMe = sender === 'You' || String(sender) === String(userId);
     messageElement.className = `message-wrapper ${isMe ? 'sent' : 'received'}`;
 
@@ -187,9 +109,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Persists a message to the server.
+   * Persists a message to the server and emits it via socket.
    */
   async function sendMessage(recipientId, recipientName, message) {
+    const data = { sender: userId, senderName: userName, recipient: recipientId, message };
+
+    // a. Persist message via API
     try {
       await fetch('/chat/send', {
         method: 'POST',
@@ -203,8 +128,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.error('Failed to save message', err);
       alert('Could not send message. Please try again.');
-      return;
+      return; // Stop if saving failed
     }
+
+    // b. Emit for real-time delivery
+    socket.emit('chat message', data);
   }
 
   /**
@@ -214,13 +142,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatBox = document.getElementById('chat-box');
     if (!chatBox) return;
 
+    // Show loading state
     chatBox.innerHTML = '<div class="d-flex justify-content-center my-4"><div class="spinner-border spinner-border-sm text-secondary" role="status"></div></div>';
 
     try {
       const response = await fetch(`/chat/history/${recipientId}`);
       if (response.ok) {
         const messages = await response.json();
-        chatBox.innerHTML = '';
+        chatBox.innerHTML = ''; // Clear spinner
         messages.forEach(msg => appendChatMessage(msg.sender, msg.message));
       } else {
         chatBox.innerHTML = '<div class="text-center text-muted small my-3">Start the conversation...</div>';
@@ -230,61 +159,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- 3. Global SSE Event Listeners ---
+  // --- 3. Global Socket Event Listeners ---
 
-  stream.addEventListener('typing', (event) => {
-    const data = JSON.parse(event.data || '{}');
-    const pathParts = window.location.pathname.split('/');
-    const isChatPage = pathParts.length > 2 && pathParts[1] === 'chat';
-    const activeChatId = isChatPage ? pathParts[2] : null;
-    const isPopupActive = chatContainer && chatContainer.classList.contains('is-open');
-    const popupChatId = isPopupActive ? chatContainer.dataset.recipientId : null;
-
-    if (activeChatId && String(activeChatId) === String(data.senderId)) {
-      setTypingIndicator(activeChatId, true, false);
-    }
-
-    if (popupChatId && String(popupChatId) === String(data.senderId)) {
-      setTypingIndicator(popupChatId, true, true);
-    }
-  });
-
-  stream.addEventListener('stop-typing', (event) => {
-    const data = JSON.parse(event.data || '{}');
-    const pathParts = window.location.pathname.split('/');
-    const isChatPage = pathParts.length > 2 && pathParts[1] === 'chat';
-    const activeChatId = isChatPage ? pathParts[2] : null;
-    const isPopupActive = chatContainer && chatContainer.classList.contains('is-open');
-    const popupChatId = isPopupActive ? chatContainer.dataset.recipientId : null;
-
-    if (activeChatId && String(activeChatId) === String(data.senderId)) {
-      setTypingIndicator(activeChatId, false, false);
-    }
-
-    if (popupChatId && String(popupChatId) === String(data.senderId)) {
-      setTypingIndicator(popupChatId, false, true);
-    }
-  });
-
-  stream.addEventListener('chat-message', (event) => {
-    const data = JSON.parse(event.data || '{}');
-    const chatBox = document.getElementById('chat-box');
+  // Listen for incoming messages from anyone
+  socket.on('chat message', (data) => {
+    const chatBox = document.getElementById('chat-box'); // This is the same ID for both main page and popup
     if (!chatBox) return;
 
     const pathParts = window.location.pathname.split('/');
     let activeChatId = null;
 
+    // Case 1: We are on the main chat page (/chat/:id)
     if (pathParts.length > 2 && pathParts[1] === 'chat') {
       activeChatId = pathParts[2];
-    } else if (chatContainer && chatContainer.classList.contains('is-open')) {
+    }
+    // Case 2: The chat popup is open on another page (e.g., /items/:id)
+    else if (chatContainer && chatContainer.classList.contains('is-open')) {
       activeChatId = chatContainer.dataset.recipientId;
     }
 
+    // If the incoming message is from the person we are actively chatting with, display it.
     if (activeChatId && String(data.sender) === String(activeChatId)) {
       appendChatMessage(data.sender, data.message);
-      markConversationRead(activeChatId);
     } else {
-      updateUnreadBadge(data.sender);
+      // Otherwise, show a notification dot on the main chat navigation link.
       const chatNavLink = document.getElementById('chat-nav-link');
       if (chatNavLink && !document.getElementById('chat-notification-badge')) {
         const badge = document.createElement('span');
@@ -293,39 +191,24 @@ document.addEventListener('DOMContentLoaded', () => {
         chatNavLink.appendChild(badge);
       }
     }
-
-    updateConversationPreview(data.sender, data.message, data.createdAt);
   });
 
   // --- 4. Page-Specific Logic ---
 
+  // On any /chat/* page, remove the notification badge
   if (window.location.pathname.startsWith('/chat')) {
     const badge = document.getElementById('chat-notification-badge');
     if (badge) badge.remove();
-    const pathParts = window.location.pathname.split('/');
-    if (pathParts.length > 2) {
-      markConversationRead(pathParts[2]);
-    }
   }
 
+  // Logic for the main chat page (/chat/:id)
   const chatForm = document.getElementById('chat-form');
   if (chatForm) {
     const messageInput = document.getElementById('message');
     const chatBox = document.getElementById('chat-box');
 
+    // Scroll to the bottom of messages on load
     if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
-
-    let typingTimeout;
-    messageInput.addEventListener('input', () => {
-      const pathParts = window.location.pathname.split('/');
-      const recipientId = pathParts.length > 2 && pathParts[1] === 'chat' ? pathParts[2] : null;
-      if (!recipientId) return;
-      sendTyping(recipientId, true);
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => {
-        sendTyping(recipientId, false);
-      }, 1200);
-    });
 
     chatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -337,14 +220,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const recipientName = document.querySelector('#chat-with')?.textContent.replace('Chat with ', '') || 'User';
 
+      // Use the shared send function
       await sendMessage(recipientId, recipientName, message);
+
+      // Show the sent message locally
       appendChatMessage('You', message);
       messageInput.value = '';
     });
   }
 
-  // --- 5. Chat Popup Logic ---
+  // --- 5. Chat Popup Logic (for initiating chats from other pages) ---
+  const openChatBtn = document.getElementById('open-chat-btn');
+  const closeChatBtn = document.getElementById('close-chat-btn');
+  const chatContainer = document.getElementById('chat-container');
+  const chatOverlay = document.getElementById('chat-overlay');
+  const popupChatForm = document.getElementById('popup-chat-form');
 
+  // Open popup and prepare it with recipient data
   if (openChatBtn && chatContainer) {
     openChatBtn.addEventListener('click', () => {
       const recipientId = openChatBtn.dataset.recipientId;
@@ -356,20 +248,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      // Store recipient info on the popup container for the form to use
       chatContainer.dataset.recipientId = recipientId;
       chatContainer.dataset.recipientName = recipientName;
 
+      // Update popup title
       const popupTitle = chatContainer.querySelector('.chat-popup-header h5');
       if (popupTitle) popupTitle.textContent = `Chat with ${recipientName}`;
 
+      // Load previous messages
       loadChatHistory(recipientId);
-      markConversationRead(recipientId);
 
       chatContainer.classList.add('is-open');
       document.body.classList.add('chat-open');
     });
   }
 
+  // Handle sending the first message from the popup
   if (popupChatForm && chatContainer) {
     const popupMsgInput = popupChatForm.querySelector('[name="message"]');
     if (popupMsgInput && !popupMsgInput.parentNode.querySelector('.char-counter')) {
@@ -384,17 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    let popupTypingTimeout;
-    popupMsgInput.addEventListener('input', () => {
-      const { recipientId } = chatContainer.dataset;
-      if (!recipientId) return;
-      sendTyping(recipientId, true);
-      clearTimeout(popupTypingTimeout);
-      popupTypingTimeout = setTimeout(() => {
-        sendTyping(recipientId, false);
-      }, 1200);
-    });
-
     popupChatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const message = popupMsgInput.value.trim();
@@ -402,9 +286,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!message || !recipientId) return;
 
+      // Use the shared send function
       await sendMessage(recipientId, recipientName, message);
+
+      // Show the sent message locally in the popup
       appendChatMessage('You', message);
 
+      // Clear the input field and reset the counter
       popupMsgInput.value = '';
       const counter = popupMsgInput.parentNode.querySelector('.char-counter');
       if (counter) {
@@ -413,6 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Generic close handlers for the popup
   const closeChat = () => {
     if (chatContainer) {
       chatContainer.classList.remove('is-open');

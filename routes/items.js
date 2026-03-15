@@ -205,6 +205,68 @@ router.post('/:id/chat', requireLogin, async (req, res) => {
   res.redirect(`/chat/${item.userId}`);
 });
 
+router.post('/:id/claim', requireLogin, upload.single('proof'), async (req, res) => {
+  const item = await itemModel.findById(req.params.id);
+  if (!item) return res.status(404).render('404', { title: 'Not Found' });
+
+  if (req.session.user && String(item.userId) === String(req.session.user.id)) {
+    req.flash('info', 'You cannot claim your own item.');
+    return res.redirect(`/items/${item.id}`);
+  }
+
+  const description = (req.body.description || '').trim();
+  const proofPath = req.file ? `/uploads/${req.file.filename}` : null;
+  if (!description && !proofPath) {
+    req.flash('error', 'Please provide a description or upload a proof photo.');
+    return res.redirect(`/items/${item.id}`);
+  }
+
+  await itemModel.addClaim(item.id, {
+    id: Date.now().toString(),
+    claimantId: req.session.user.id,
+    claimantName: req.session.user.name,
+    description,
+    proofPath,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  });
+
+  req.flash('success', 'Claim request sent. The reporter will review it.');
+  res.redirect(`/items/${item.id}`);
+});
+
+router.post('/:id/claim/:claimId/accept', requireLogin, async (req, res) => {
+  const item = await itemModel.findById(req.params.id);
+  if (!item) return res.status(404).render('404', { title: 'Not Found' });
+
+  const isOwner = String(item.userId) === String(req.session.user.id);
+  const isAdmin = req.session.user && req.session.user.role === 'admin';
+  if (!isOwner && !isAdmin) {
+    req.flash('error', 'You do not have permission to update this claim.');
+    return res.redirect('/dashboard');
+  }
+
+  await itemModel.updateClaimStatus(item.id, req.params.claimId, 'accepted');
+  req.flash('success', 'Claim accepted. The item has been marked as returned.');
+  res.redirect('/dashboard');
+});
+
+router.post('/:id/claim/:claimId/deny', requireLogin, async (req, res) => {
+  const item = await itemModel.findById(req.params.id);
+  if (!item) return res.status(404).render('404', { title: 'Not Found' });
+
+  const isOwner = String(item.userId) === String(req.session.user.id);
+  const isAdmin = req.session.user && req.session.user.role === 'admin';
+  if (!isOwner && !isAdmin) {
+    req.flash('error', 'You do not have permission to update this claim.');
+    return res.redirect('/dashboard');
+  }
+
+  await itemModel.updateClaimStatus(item.id, req.params.claimId, 'denied');
+  req.flash('info', 'Claim denied.');
+  res.redirect('/dashboard');
+});
+
 router.get('/:id', async (req, res) => {
   const item = await itemModel.findById(req.params.id);
   if (!item) return res.status(404).render('404', { title: 'Not Found' });

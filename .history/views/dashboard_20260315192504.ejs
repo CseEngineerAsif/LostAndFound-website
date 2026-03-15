@@ -1,0 +1,62 @@
+<div class="row">
+  <div class="col-md-3 mb-4">
+    <div class="list-group shadow-sm">
+      <a href="/dashboard" class="list-group-item list-group-item-action active">
+        <i class="bi bi-collection me-2"></i>My Reports
+      </a>
+      <a href="/items/report" class="list-group-item list-group-item-action">
+        <i class="bi bi-plus-circle me-2"></i>Report New Item
+      </a>
+      <!-- Add Profile or Settings links here in the future -->
+    </div>
+  </div>
+  
+  <div class="col-md-9">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="mb-0">My Reported Items</h2>
+      <a href="/items/report" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg"></i> Report Item
+      </a>
+    </div>
+
+    <% if (myItems && myItems.length > 0) { %>
+      <div class="row g-3">
+        <% myItems.forEach(item => { %>
+          <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm border-0">
+              <% if (item.photoPath) { %>
+                <img src="<%= item.photoPath %>" class="card-img-top" alt="<%= item.name %>" style="height: 160px; object-fit: cover;">
+              <% } else { %>
+                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 160px;">
+                  <i class="bi bi-image text-muted fs-1"></i>
+                </div>
+              <% } %>
+              <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="badge bg-<%= item.type === 'lost' ? 'danger' : 'success' %>"><%= item.type.toUpperCase() %></span>
+                    <span class="badge bg-<%= item.status === 'resolved' ? 'success' : 'secondary' %>"><%= item.status %></span>
+                </div>
+                <h5 class="card-title text-truncate"><%= item.name %></h5>
+                <p class="card-text small text-muted mb-2">
+                  <i class="bi bi-geo-alt"></i> <%= item.location %>
+                </p>
+                <p class="card-text small text-muted">
+                   <i class="bi bi-calendar"></i> <%= new Date(item.dateLost || item.createdAt).toLocaleDateString() %>
+                </p>
+              </div>
+              <div class="card-footer bg-white d-flex justify-content-between">
+                <a href="/items/<%= item.id %>" class="btn btn-outline-primary btn-sm w-100">View Details</a>
+              </div>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } else { %>
+      <div class="text-center py-5 bg-white rounded shadow-sm">
+        <i class="bi bi-folder2-open display-4 text-muted"></i>
+        <p class="mt-3 text-muted">You haven't reported any items yet.</p>
+        <a href="/items/report" class="btn btn-primary mt-2">Report an Item</a>
+      </div>
+    <% } %>
+  </div>
+</div>
