@@ -138,11 +138,12 @@
             <i class="bi bi-link-45deg me-1"></i>Copy share link
           </button>
           <% if (currentUser && String(currentUser.id) !== String(item.userId)) { %>
-            <button type="button" id="open-chat-btn" class="btn btn-primary">
+            <a href="/items/<%= item.id %>/chat" class="btn btn-primary">
+              <i class="bi bi-chat-dots me-1"></i>Contact owner
               <i class="bi bi-chat-dots me-1"></i>Chat
-            </button>
+            </a>
           <% } else if (!currentUser) { %>
-            <a href="/auth/login" class="btn btn-primary"><i class="bi bi-chat-dots me-1"></i>Login to Chat</a>
+            <a href="/auth/login" class="btn btn-primary"><i class="bi bi-chat-dots me-1"></i>Login to Contact</a>
           <% } %>
           <button class="btn btn-ghost">
             <i class="bi bi-check-circle me-1"></i>Report as claimed
@@ -206,90 +207,3 @@
     </div>
   </div>
 </div>
-
-<% if (currentUser && String(currentUser.id) !== String(item.userId)) { %>
-<!-- Chat Popup -->
-<div id="chat-container" class="chat-container">
-  <div id="chat-overlay" class="chat-overlay"></div>
-  <div id="chat-popup" class="chat-popup">
-    <div class="card shadow-sm h-100 border-0">
-      <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
-        <div class="d-flex align-items-center gap-3">
-          <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">
-            <%= item.reportedByName ? item.reportedByName.charAt(0).toUpperCase() : 'U' %>
-          </div>
-          <div>
-            <h5 class="mb-0 text-truncate" style="max-width: 200px;"><%= item.reportedByName || 'User' %></h5>
-            <small class="text-muted">Re: <%= item.name %></small>
-          </div>
-        </div>
-        <button id="close-chat-btn" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-lg"></i></button>
-      </div>
-      
-      <div id="chat-messages" class="card-body bg-light" style="height: 100%; overflow-y: auto;">
-          <div class="text-center text-muted small my-3">
-              Started chat regarding <strong><%= item.name %></strong>
-              <br>
-              <%= new Date().toLocaleDateString() %>
-          </div>
-          <!-- Chat history would appear here -->
-      </div>
-
-      <div class="card-footer bg-white py-3">
-        <form id="chat-form" action="/items/<%= item.id %>/chat" method="POST" class="d-flex gap-2" data-username="<%= currentUser ? currentUser.name : 'Anonymous' %>">
-          <input type="text" name="message" class="form-control" placeholder="Type a message..." required autocomplete="off">
-          <button type="submit" class="btn btn-primary"><i class="bi bi-send-fill"></i></button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<style>
-  .chat-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1050;
-    pointer-events: none;
-  }
-  .chat-container.is-open {
-    pointer-events: auto;
-  }
-  .chat-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-  .chat-container.is-open .chat-overlay {
-    opacity: 1;
-  }
-  .chat-popup {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 100%;
-    max-width: 420px;
-    height: 100%;
-    background-color: #fff;
-    transform: translateX(100%);
-    transition: transform 0.3s ease-in-out;
-    display: flex;
-    flex-direction: column;
-  }
-  .chat-container.is-open .chat-popup {
-    transform: translateX(0);
-  }
-  body.chat-open {
-    overflow: hidden;
-  }
-</style>
-<script src="/socket.io/socket.io.js"></script>
-<% } %>

@@ -109,14 +109,23 @@ document.addEventListener('DOMContentLoaded', () => {
   if (closeChatBtn) closeChatBtn.addEventListener('click', closeChat);
   if (chatOverlay) chatOverlay.addEventListener('click', closeChat);
 
+  const chatForm = document.getElementById('chat-form');
+    const messageInput = document.getElementById('message');
   // --- Main Chat & Notification Logic ---
   const userId = document.body.dataset.userId;
 
   // Helper function to append messages, defined once.
   function appendChatMessage(sender, message) {
     const chatBox = document.getElementById('chat-box');
+    const userList = document.getElementById('user-list');
+    const chatWith = document.getElementById('chat-with');
     if (!chatBox) return;
 
+    if (typeof io !== 'undefined' && chatForm && chatBox) {
+        const socket = io();
+        // Check if we are in a specific chat room (URL path)
+        const pathParts = window.location.pathname.split('/');
+        let recipientId = pathParts.length > 2 && pathParts[1] === 'chat' ? pathParts[2] : null;
     const messageElement = document.createElement('div');
     const currentUserId = document.body.dataset.userId;
     const isMe = sender === 'You' || String(sender) === String(currentUserId);
@@ -131,16 +140,23 @@ document.addEventListener('DOMContentLoaded', () => {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
+        // Get user ID from the server (you'll need to pass this from your backend)
+        const userId = document.body.dataset.userId;
+        const userName = document.body.dataset.userName || 'User';
   if (typeof io !== 'undefined' && userId) {
     const socket = io();
     socket.emit('user online', userId);
 
+        // Notify server that user is online
+        socket.emit('user online', userId);
     // 1. Universal message listener
     socket.on('chat message', (data) => {
       const chatBox = document.getElementById('chat-box');
       const pathParts = window.location.pathname.split('/');
       const activeChatId = chatBox && pathParts.length > 2 && pathParts[1] === 'chat' ? pathParts[2] : null;
 
+        // Scroll to bottom of chat on load
+        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
       // If we are in the active chat, append the message
       if (activeChatId && String(data.sender) === activeChatId) {
         appendChatMessage(data.senderName, data.message);
@@ -156,6 +172,17 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+        // Get online users
+        socket.on('online users', (users) => {
+            if (!userList) return;
+            // Optionally update online status indicators instead of clearing list
+            // userList.innerHTML = ''; 
+            users.forEach(user => {
+                if (user.userId !== userId) {
+                   // Logic to mark users as online in the existing list
+                }
+            });
+        });
     // 2. Clear badge on navigating to chat page
     if (window.location.pathname.startsWith('/chat')) {
       const badge = document.getElementById('chat-notification-badge');
@@ -163,23 +190,69 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = messageInput.value;
+            if (message && recipientId) {
+                const data = {
+                    sender: userId,
+                    senderName: userName,
+                    recipient: recipientId,
+                    message: message
+                };
+                
+                // 1. Persist message via HTTP API
+                try {
+                    await fetch('/chat/send', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            recipientId: recipientId, 
+                            recipientName: document.querySelector('#chat-with')?.textContent.replace('Chat with ', '') || 'User',
+                            content: message 
+                        })
+                    });
+                } catch (err) {
+                    console.error('Failed to save message', err);
+                }
   // 3. Chat page specific logic (form submission)
   const chatForm = document.getElementById('chat-form');
   if (chatForm) {
     const messageInput = document.getElementById('message');
     const chatBox = document.getElementById('chat-box');
 
+                // 2. Emit socket event for real-time
+                socket.emit('chat message', data);
     // Scroll to bottom
     if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
 
+                // 3. Show message locally
+                appendMessage('You', message);
+                messageInput.value = '';
+            }
+        });
     chatForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const message = messageInput.value.trim();
       const pathParts = window.location.pathname.split('/');
       const recipientId = pathParts.length > 2 && pathParts[1] === 'chat' ? pathParts[2] : null;
 
+        socket.on('chat message', (data) => {
+            // Only append if we are chatting with this person
+            if (String(data.sender) === String(recipientId)) {
+                appendMessage(data.sender, data.message);
+            }
+        });
       if (!message || !recipientId) return;
 
+        socket.on('private message', (data) => {
+            // Handle incoming private messages
+            if (data.sender === recipientId) {
+                appendMessage(data.senderName, data.message);
+            } else {
+                // Notify user of a new message from someone else
+                alert(`New message from ${data.senderName}`);
+            }
       const userName = document.body.dataset.userName || 'User';
       const data = { sender: userId, senderName: userName, recipient: recipientId, message };
 
@@ -198,6 +271,20 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Failed to save message', err);
       }
 
+        function appendMessage(sender, message) {
+            const messageElement = document.createElement('div');
+            const isMe = sender === 'You' || String(sender) === String(userId);
+            messageElement.className = `message-wrapper ${isMe ? 'sent' : 'received'}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.textContent = message;
+            
+            messageElement.appendChild(bubble);
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    }
       // Emit for real-time
       const socket = io();
       socket.emit('chat message', data);

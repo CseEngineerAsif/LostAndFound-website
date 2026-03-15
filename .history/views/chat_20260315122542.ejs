@@ -1,0 +1,167 @@
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Users</h3>
+<div class="row g-0 chat-container">
+  <!-- Conversations Sidebar -->
+  <div class="col-lg-4 col-md-5 border-end chat-sidebar">
+    <div class="p-3 border-bottom">
+      <h4 class="mb-0">Chats</h4>
+    </div>
+    <div class="conversation-list">
+      <% if (conversations && conversations.length > 0) { %>
+        <% conversations.forEach(conv => { %>
+          <a href="/chat/<%= conv.userId %>" class="conversation-item list-group-item list-group-item-action border-0 <%= (activeChat && String(activeChat.user.userId) === String(conv.userId)) ? 'active' : '' %>">
+            <div class="d-flex align-items-center">
+              <div class="flex-shrink-0 me-3">
+                <div class="avatar"><%= conv.name.charAt(0).toUpperCase() %></div>
+              </div>
+              <div class="flex-grow-1">
+                <div class="d-flex w-100 justify-content-between">
+                  <h6 class="mb-1"><%= conv.name %></h6>
+                  <small class="text-muted"><%= new Date(conv.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %></small>
+                </div>
+                <ul class="list-group list-group-flush" id="user-list">
+                    <!-- Users will be dynamically added here -->
+                </ul>
+                <p class="mb-0 text-muted text-truncate" style="max-width: 200px;"><%= conv.lastMessage %></p>
+              </div>
+            </div>
+          </a>
+        <% }) %>
+      <% } else { %>
+        <div class="p-3 text-center text-muted">
+          <p class="mb-0">No conversations yet.</p>
+          <small>Start a chat from an item page.</small>
+        </div>
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 id="chat-with">Chat</h3>
+                </div>
+                <div class="card-body" id="chat-box">
+                    <!-- Chat messages will be dynamically added here -->
+                </div>
+                <div class="card-footer">
+                    <form id="chat-form">
+                        <div class="input-group">
+                            <input type="text" id="message" class="form-control" placeholder="Type a message...">
+                            <div class="input-group-append">
+                                <button type="submit" class="btn btn-primary">Send</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Active Chat Window -->
+  <div class="col-lg-8 col-md-7 chat-main">
+    <% if (activeChat) { %>
+      <div class="chat-header p-3 border-bottom d-flex align-items-center">
+        <div class="avatar me-3"><%= activeChat.user.name.charAt(0).toUpperCase() %></div>
+        <h5 id="chat-with" class="mb-0"><%= activeChat.user.name %></h5>
+      </div>
+      <div id="chat-box" class="chat-box p-3">
+        <% activeChat.messages.forEach(msg => { %>
+          <% const isMe = String(msg.senderId) === String(currentUser.id) %>
+          <div class="message-wrapper <%= isMe ? 'sent' : 'received' %>">
+            <div class="message-bubble"><%- msg.content %></div>
+          </div>
+        <% }) %>
+      </div>
+      <form id="chat-form" class="chat-form p-3 border-top">
+        <input type="text" id="message" class="form-control" placeholder="Type a message..." autocomplete="off" required>
+        <button type="submit" class="btn btn-primary btn-icon"><i class="bi bi-send-fill"></i></button>
+      </form>
+    <% } else { %>
+      <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center text-muted">
+        <i class="bi bi-chat-left-dots-fill" style="font-size: 4rem;"></i>
+        <h4 class="mt-3">Select a conversation</h4>
+        <p>Choose a chat from the left to see the messages.</p>
+      </div>
+    <% } %>
+  </div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    const chatForm = document.getElementById('chat-form');
+    const messageInput = document.getElementById('message');
+    const chatBox = document.getElementById('chat-box');
+    const userList = document.getElementById('user-list');
+    const chatWith = document.getElementById('chat-with');
+
+    let recipientId = null;
+
+    // Get user ID from the server (you'll need to pass this from your backend)
+    const userId = '<%= user._id %>';
+
+    // Notify server that user is online
+    socket.emit('user online', userId);
+
+    // Get online users
+    socket.on('online users', (users) => {
+        userList.innerHTML = '';
+        users.forEach(user => {
+            if (user.userId !== userId) {
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.innerText = user.username; // Assuming you have a username
+                li.dataset.userId = user.userId;
+                li.addEventListener('click', () => {
+                    recipientId = user.userId;
+                    chatWith.innerText = `Chat with ${user.username}`;
+                    // You might want to load previous messages here
+                });
+                userList.appendChild(li);
+            }
+        });
+    });
+
+    chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const message = messageInput.value;
+        if (message && recipientId) {
+            const data = {
+                sender: userId,
+                recipient: recipientId,
+                message: message
+            };
+            socket.emit('chat message', data);
+            appendMessage('You', message);
+            messageInput.value = '';
+        }
+    });
+
+    socket.on('chat message', (data) => {
+        if (data.sender === recipientId) {
+            appendMessage(data.sender, data.message);
+        }
+    });
+
+    socket.on('private message', (data) => {
+        // Handle incoming private messages
+        if (data.sender === recipientId) {
+            appendMessage(data.senderName, data.message);
+        } else {
+            // Notify user of a new message from someone else
+            alert(`New message from ${data.senderName}`);
+        }
+    });
+
+    function appendMessage(sender, message) {
+        const messageElement = document.createElement('div');
+        messageElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
+        chatBox.appendChild(messageElement);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+</script>
+
+ 

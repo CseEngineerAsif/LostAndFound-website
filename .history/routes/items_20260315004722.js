@@ -3,7 +3,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const itemModel = require('../models/item');
-const messageModel = require('../models/message');
 const { getFeaturedItem } = require('../data/featured-items');
 
 const router = express.Router();
@@ -158,51 +157,6 @@ router.get('/featured/:slug', (req, res) => {
   };
 
   res.render('item', { title: featured.name, item, isOwner: false, matches: [] });
-});
-
-router.get('/:id/chat', requireLogin, async (req, res) => {
-  const item = await itemModel.findById(req.params.id);
-  if (!item) return res.status(404).render('404', { title: 'Not Found' });
-
-  if (!item.userId) {
-    req.flash('error', 'Cannot chat with the reporter of this item.');
-    return res.redirect(`/items/${item.id}`);
-  }
-
-  // Prevent user from chatting with themselves
-  if (req.session.user && String(item.userId) === String(req.session.user.id)) {
-    req.flash('info', 'You cannot chat with yourself.');
-    return res.redirect(`/items/${item.id}`);
-  }
-
-  res.redirect(`/chat/${item.userId}`);
-});
-
-router.post('/:id/chat', requireLogin, async (req, res) => {
-  const item = await itemModel.findById(req.params.id);
-  if (!item) return res.status(404).render('404', { title: 'Not Found' });
-
-  if (!item.userId) {
-    req.flash('error', 'Cannot chat with the reporter of this item.');
-    return res.redirect(`/items/${item.id}`);
-  }
-
-  if (req.session.user && String(item.userId) === String(req.session.user.id)) {
-    req.flash('info', 'You cannot chat with yourself.');
-    return res.redirect(`/items/${item.id}`);
-  }
-
-  if (req.body.message) {
-    await messageModel.createMessage({
-      senderId: req.session.user.id,
-      senderName: req.session.user.name,
-      recipientId: item.userId,
-      recipientName: item.reportedByName || 'User',
-      content: req.body.message
-    });
-  }
-
-  res.redirect(`/chat/${item.userId}`);
 });
 
 router.get('/:id', async (req, res) => {

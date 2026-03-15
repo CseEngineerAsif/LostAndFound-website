@@ -68,6 +68,7 @@ router.get('/dashboard', async (req, res) => {
 
   res.render('dashboard', {
     title: 'My Dashboard',
+    currentUser: req.session.user,
     myItems,
     claimedItems,
     stats,

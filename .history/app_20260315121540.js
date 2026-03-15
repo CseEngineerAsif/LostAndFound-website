@@ -10,8 +10,6 @@ const session = require('express-session');
 const bodyParser = require('body-parser');
 const flash = require('connect-flash');
 const expressLayouts = require('express-ejs-layouts');
-const http = require('http');
-const { Server } = require('socket.io');
 
 const { init } = require('./db');
 const authRoutes = require('./routes/auth');
@@ -20,9 +18,6 @@ const indexRoutes = require('./routes/index');
 const chatRoutes = require('./routes/chat');
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
 const PORT = process.env.PORT || 3000;
 
 init().catch((err) => {
@@ -69,35 +64,6 @@ app.use((req, res, next) => {
   next();
 });
 
-io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
-
-  // The client sends 'user online' with their ID. We can use this to join a private room.
-  socket.on('user online', (userId) => {
-    if (userId) {
-      socket.join(String(userId));
-      console.log(`User ${userId} joined their private room.`);
-    }
-  });
-
-  // Listen for a chat message
-  socket.on('chat message', (data) => {
-    // data contains { sender, senderName, recipient, message }
-    if (data.recipient) {
-      // Emit the message only to the recipient's room
-      socket.to(String(data.recipient)).emit('chat message', {
-        sender: data.sender,
-        message: data.message,
-        senderName: data.senderName,
-      });
-    }
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
-});
-
 app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
 app.use('/items', itemRoutes);
@@ -112,7 +78,7 @@ function startServer(startPort, maxAttempts = 10) {
   const maxPort = startPort + maxAttempts;
 
   const tryListen = () => {
-    server.listen(port, () => {
+    const server = app.listen(port, () => {
       console.log(`Campus Lost & Found running at http://localhost:${port}`);
     });
 

@@ -1,0 +1,111 @@
+/* General App Styles (assuming some might exist) */
+body {
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main.container {
+  flex-grow: 1;
+}
+
+/* Chat Interface Styles */
+.chat-container {
+  height: calc(100vh - 150px); /* Adjust based on header/footer height */
+  overflow: hidden;
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius-lg);
+  background-color: var(--bs-body-bg);
+}
+
+.chat-sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.conversation-list {
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.conversation-item.active {
+  background-color: var(--bs-primary-bg-subtle) !important;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-secondary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.chat-main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chat-box {
+  flex-grow: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.message-wrapper {
+  display: flex;
+  max-width: 75%;
+}
+
+.message-wrapper.sent {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.message-wrapper.received {
+  align-self: flex-start;
+}
+
+.message-bubble {
+  padding: 0.5rem 1rem;
+  border-radius: 1.25rem;
+  word-wrap: break-word;
+}
+
+.message-wrapper.sent .message-bubble {
+  background-color: var(--bs-primary);
+  color: white;
+  border-bottom-right-radius: 0.25rem;
+}
+
+.message-wrapper.received .message-bubble {
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  border-bottom-left-radius: 0.25rem;
+}
+
+.chat-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-icon {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}

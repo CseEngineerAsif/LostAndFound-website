@@ -175,6 +175,16 @@ router.get('/:id/chat', requireLogin, async (req, res) => {
     return res.redirect(`/items/${item.id}`);
   }
 
+  if (req.body.message) {
+    await messageModel.createMessage({
+      senderId: req.session.user.id,
+      senderName: req.session.user.name,
+      recipientId: item.userId,
+      recipientName: item.reportedByName || 'User',
+      content: req.body.message
+    });
+  }
+
   res.redirect(`/chat/${item.userId}`);
 });
 
@@ -190,16 +200,6 @@ router.post('/:id/chat', requireLogin, async (req, res) => {
   if (req.session.user && String(item.userId) === String(req.session.user.id)) {
     req.flash('info', 'You cannot chat with yourself.');
     return res.redirect(`/items/${item.id}`);
-  }
-
-  if (req.body.message) {
-    await messageModel.createMessage({
-      senderId: req.session.user.id,
-      senderName: req.session.user.name,
-      recipientId: item.userId,
-      recipientName: item.reportedByName || 'User',
-      content: req.body.message
-    });
   }
 
   res.redirect(`/chat/${item.userId}`);

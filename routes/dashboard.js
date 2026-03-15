@@ -1,15 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const itemModel = require('../models/item');
-const { featuredItems } = require('../data/featured-items');
 
 router.get('/', async (req, res) => {
-  const items = await itemModel.findRecentItems(12);
-  const stats = await itemModel.getStats();
-  res.render('index', { title: 'Campus Lost & Found', items, stats, featuredItems });
-});
-
-router.get('/dashboard', async (req, res) => {
   if (!req.session.user) {
     req.flash('info', 'Please log in to access your dashboard');
     return res.redirect('/auth/login');
@@ -68,6 +61,7 @@ router.get('/dashboard', async (req, res) => {
 
   res.render('dashboard', {
     title: 'My Dashboard',
+    currentUser: req.session.user,
     myItems,
     claimedItems,
     stats,
