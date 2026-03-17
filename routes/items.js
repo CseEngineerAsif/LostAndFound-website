@@ -38,6 +38,54 @@ function requireLogin(req, res, next) {
   next();
 }
 
+function normalizeAnswer(value) {
+  return (value || '').trim().toLowerCase();
+}
+
+function computeConfidenceScore({ proofProvided, itemDate, claimedDate, expectedAnswers, claimantAnswers }) {
+  const totalQuestions = expectedAnswers.length;
+  let correctAnswers = 0;
+  const answerMatches = expectedAnswers.map((expected, index) => {
+    const expectedValue = normalizeAnswer(expected);
+    const claimantValue = normalizeAnswer(claimantAnswers[index]);
+    if (!expectedValue || !claimantValue) return false;
+    const matched =
+      claimantValue === expectedValue ||
+      claimantValue.includes(expectedValue) ||
+      expectedValue.includes(claimantValue);
+    if (matched) correctAnswers += 1;
+    return matched;
+  });
+
+  let timelineMatch = false;
+  if (itemDate && claimedDate) {
+    const itemTime = new Date(itemDate).getTime();
+    const claimedTime = new Date(claimedDate).getTime();
+    if (!Number.isNaN(itemTime) && !Number.isNaN(claimedTime)) {
+      const diffDays = Math.abs(itemTime - claimedTime) / (1000 * 60 * 60 * 24);
+      timelineMatch = diffDays <= 1;
+    }
+  }
+
+  const proofPoints = proofProvided ? 40 : 0;
+  const answerPoints = totalQuestions
+    ? Math.round((correctAnswers / totalQuestions) * 40)
+    : 0;
+  const timelinePoints = timelineMatch ? 20 : 0;
+  const total = proofPoints + answerPoints + timelinePoints;
+
+  return {
+    total,
+    proofPoints,
+    answerPoints,
+    timelinePoints,
+    correctAnswers,
+    totalQuestions,
+    answerMatches,
+    timelineMatch,
+  };
+}
+
 router.get('/report', requireLogin, (req, res) => {
   const prefillType = req.query.type === 'found' ? 'found' : 'lost';
   res.render('report', { title: 'Post Item', prefillType });
@@ -53,10 +101,28 @@ router.post('/report', requireLogin, upload.single('photo'), async (req, res) =>
     category,
     contactMethod,
     anonymous,
+    returnInfo,
+    returnBy,
+    verifyQuestion1,
+    verifyAnswer1,
+    verifyQuestion2,
+    verifyAnswer2,
+    verifyQuestion3,
+    verifyAnswer3,
   } = req.body;
   const photoPath = req.file ? `/uploads/${req.file.filename}` : null;
+  const verificationQuestions = [
+    { question: (verifyQuestion1 || '').trim(), answer: (verifyAnswer1 || '').trim() },
+    { question: (verifyQuestion2 || '').trim(), answer: (verifyAnswer2 || '').trim() },
+    { question: (verifyQuestion3 || '').trim(), answer: (verifyAnswer3 || '').trim() },
+  ].filter((entry) => entry.question && entry.answer);
 
   try {
+    if (verificationQuestions.length < 2) {
+      req.flash('error', 'Please provide at least two verification questions with answers.');
+      return res.redirect('/items/report');
+    }
+
     await itemModel.createItem({
       userId: req.session.user.id,
       type,
@@ -69,6 +135,9 @@ router.post('/report', requireLogin, upload.single('photo'), async (req, res) =>
       anonymous: anonymous === 'true',
       reportedByName: req.session.user.name,
       photoPath,
+      returnInfo: (returnInfo || '').trim(),
+      returnBy: (returnBy || '').trim(),
+      verificationQuestions,
       status: 'reported',
     });
 
@@ -215,19 +284,42 @@ router.post('/:id/claim', requireLogin, upload.single('proof'), async (req, res)
   }
 
   const description = (req.body.description || '').trim();
+  const claimedDate = (req.body.claimedDate || '').trim();
+  const answersRaw = req.body.answers || [];
+  const claimantAnswers = Array.isArray(answersRaw) ? answersRaw.map((ans) => (ans || '').trim()) : [(answersRaw || '').trim()];
+  const verificationQuestions = item.verificationQuestions || [];
+  if (verificationQuestions.length) {
+    const providedCount = claimantAnswers.filter((ans) => ans).length;
+    if (providedCount < verificationQuestions.length) {
+      req.flash('error', 'Please answer all verification questions.');
+      return res.redirect(`/items/${item.id}`);
+    }
+  }
   const proofPath = req.file ? `/uploads/${req.file.filename}` : null;
   if (!description && !proofPath) {
     req.flash('error', 'Please provide a description or upload a proof photo.');
     return res.redirect(`/items/${item.id}`);
   }
 
+  const expectedAnswers = verificationQuestions.map((entry) => entry.answer || '');
+  const score = computeConfidenceScore({
+    proofProvided: Boolean(proofPath),
+    itemDate: item.dateLost,
+    claimedDate,
+    expectedAnswers,
+    claimantAnswers,
+  });
+
   await itemModel.addClaim(item.id, {
     id: Date.now().toString(),
     claimantId: req.session.user.id,
     claimantName: req.session.user.name,
     description,
+    claimedDate: claimedDate || null,
     proofPath,
     status: 'pending',
+    answers: claimantAnswers,
+    score,
     createdAt: new Date().toISOString(),
   });
 
@@ -247,6 +339,19 @@ router.post('/:id/claim/:claimId/accept', requireLogin, async (req, res) => {
   }
 
   await itemModel.updateClaimStatus(item.id, req.params.claimId, 'accepted');
+  const claim = (item.claims || []).find((c) => String(c.id) === String(req.params.claimId));
+  if (claim) {
+    const returnInfo = item.returnInfo ? `Return location: ${item.returnInfo}` : 'Return location: (not specified)';
+    const returnBy = item.returnBy ? `Handled by: ${item.returnBy}` : `Handled by: ${item.reportedByName || 'Reporter'}`;
+    const messageText = `Your claim for "${item.name}" was accepted. ${returnInfo}. ${returnBy}. If this is not yours, request a return within 72 hours and return the item within 5 days.`;
+    await messageModel.createMessage({
+      senderId: req.session.user.id,
+      senderName: req.session.user.name,
+      recipientId: claim.claimantId,
+      recipientName: claim.claimantName,
+      content: messageText,
+    });
+  }
   req.flash('success', 'Claim accepted. The item has been marked as returned.');
   res.redirect('/dashboard');
 });
@@ -264,6 +369,65 @@ router.post('/:id/claim/:claimId/deny', requireLogin, async (req, res) => {
 
   await itemModel.updateClaimStatus(item.id, req.params.claimId, 'denied');
   req.flash('info', 'Claim denied.');
+  res.redirect('/dashboard');
+});
+
+router.post('/:id/claim/:claimId/return-request', requireLogin, async (req, res) => {
+  const result = await itemModel.requestClaimReturn(req.params.id, req.params.claimId, req.session.user.id);
+  if (!result.ok) {
+    const message =
+      result.reason === 'window_closed'
+        ? 'Return window has closed (72 hours).'
+        : 'Unable to request return.';
+    req.flash('error', message);
+    return res.redirect('/dashboard');
+  }
+
+  const { item, claim } = result;
+  const dueDate = claim.returnDueAt ? new Date(claim.returnDueAt).toLocaleDateString() : 'within 5 days';
+  const reporterId = item.userId;
+  const reporterName = item.reportedByName || 'Reporter';
+  const messageText = `Return requested for "${item.name}". Please collect the item back by ${dueDate}.`;
+  await messageModel.createMessage({
+    senderId: req.session.user.id,
+    senderName: req.session.user.name,
+    recipientId: reporterId,
+    recipientName: reporterName,
+    content: messageText,
+  });
+
+  req.flash('info', 'Return request sent. Please return the item within 5 days.');
+  res.redirect('/dashboard');
+});
+
+router.post('/:id/claim/:claimId/return-confirm', requireLogin, async (req, res) => {
+  const item = await itemModel.findById(req.params.id);
+  if (!item) return res.status(404).render('404', { title: 'Not Found' });
+
+  const isOwner = String(item.userId) === String(req.session.user.id);
+  const isAdmin = req.session.user && req.session.user.role === 'admin';
+  if (!isOwner && !isAdmin) {
+    req.flash('error', 'You do not have permission to confirm returns.');
+    return res.redirect('/dashboard');
+  }
+
+  const result = await itemModel.confirmClaimReturn(req.params.id, req.params.claimId, req.session.user.id);
+  if (!result.ok) {
+    req.flash('error', 'Unable to confirm return.');
+    return res.redirect('/dashboard');
+  }
+
+  const { claim } = result;
+  const messageText = `Return confirmed for "${item.name}". Thanks for helping keep the community safe.`;
+  await messageModel.createMessage({
+    senderId: req.session.user.id,
+    senderName: req.session.user.name,
+    recipientId: claim.claimantId,
+    recipientName: claim.claimantName,
+    content: messageText,
+  });
+
+  req.flash('success', 'Return confirmed. Item reopened for new claims.');
   res.redirect('/dashboard');
 });
 

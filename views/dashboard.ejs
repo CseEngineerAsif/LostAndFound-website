@@ -91,6 +91,8 @@
         </div>
         <div class="row g-3">
           <% claimRequests.forEach((req) => { %>
+            <% const score = req.claim.score || {}; %>
+            <% const scoreTotal = typeof score.total === 'number' ? score.total : null; %>
             <div class="col-12">
               <div class="card border-0 shadow-sm">
                 <div class="card-body">
@@ -100,6 +102,37 @@
                       <p class="mb-1 text-muted small">Claimant: <%= req.claim.claimantName %></p>
                       <% if (req.claim.description) { %>
                         <p class="mb-2"><%= req.claim.description %></p>
+                      <% } %>
+                      <% if (req.claim.claimedDate) { %>
+                        <p class="mb-2 text-muted small">Claimed date: <%= req.claim.claimedDate %></p>
+                      <% } %>
+                      <% if (scoreTotal !== null) { %>
+                        <div class="mb-2">
+                          <div class="d-flex justify-content-between small text-muted">
+                            <span>Confidence</span>
+                            <span><%= scoreTotal %>%</span>
+                          </div>
+                          <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-<%= scoreTotal >= 70 ? 'success' : scoreTotal >= 40 ? 'warning' : 'danger' %>" role="progressbar" style="width: <%= scoreTotal %>%"></div>
+                          </div>
+                        </div>
+                      <% } %>
+                      <% if (req.claim.answers && req.claim.answers.length) { %>
+                        <div class="mt-2">
+                          <div class="text-muted small mb-1">Verification answers</div>
+                          <% req.claim.answers.forEach((answer, idx) => { %>
+                            <% const questionText = (req.verificationQuestions && req.verificationQuestions[idx]) ? req.verificationQuestions[idx].question : `Q${idx + 1}`; %>
+                            <% const matched = req.claim.score && Array.isArray(req.claim.score.answerMatches) ? req.claim.score.answerMatches[idx] : null; %>
+                            <div class="small d-flex align-items-center gap-2">
+                              <strong><%= questionText %>:</strong> <span><%= answer || '—' %></span>
+                              <% if (matched === true) { %>
+                                <span class="badge bg-success">Match</span>
+                              <% } else if (matched === false) { %>
+                                <span class="badge bg-danger">No match</span>
+                              <% } %>
+                            </div>
+                          <% }) %>
+                        </div>
                       <% } %>
                       <% if (req.claim.proofPath) { %>
                         <a href="<%= req.claim.proofPath %>" class="btn btn-outline-primary btn-sm" target="_blank">View proof</a>
@@ -112,6 +145,153 @@
                       <form method="post" action="/items/<%= req.itemId %>/claim/<%= req.claim.id %>/deny">
                         <button class="btn btn-outline-secondary btn-sm" type="submit">Deny</button>
                       </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+    <% } %>
+
+    <% if (claimHistory && claimHistory.length) { %>
+      <div class="dashboard-claims mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h5 class="mb-0">Claim History</h5>
+          <span class="badge rounded-pill bg-secondary"><%= claimHistory.length %></span>
+        </div>
+        <div class="row g-3">
+          <% claimHistory.forEach((entry) => { %>
+            <% const historyScore = entry.claim.score || {}; %>
+            <% const historyScoreTotal = typeof historyScore.total === 'number' ? historyScore.total : null; %>
+            <% const historyStatus = entry.claim.status || 'pending'; %>
+            <% const returnStatus = entry.claim.returnStatus || 'none'; %>
+            <div class="col-12">
+              <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                    <div>
+                      <h6 class="mb-1"><%= entry.itemName %> <span class="text-muted">(<%= entry.itemType %>)</span></h6>
+                      <p class="mb-1 text-muted small">Claimant: <%= entry.claim.claimantName %></p>
+                      <% if (entry.claim.description) { %>
+                        <p class="mb-2"><%= entry.claim.description %></p>
+                      <% } %>
+                      <% if (entry.claim.claimedDate) { %>
+                        <p class="mb-2 text-muted small">Claimed date: <%= entry.claim.claimedDate %></p>
+                      <% } %>
+                      <% if (historyScoreTotal !== null) { %>
+                        <div class="mb-2">
+                          <div class="d-flex justify-content-between small text-muted">
+                            <span>Confidence</span>
+                            <span><%= historyScoreTotal %>%</span>
+                          </div>
+                          <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-<%= historyScoreTotal >= 70 ? 'success' : historyScoreTotal >= 40 ? 'warning' : 'danger' %>" role="progressbar" style="width: <%= historyScoreTotal %>%"></div>
+                          </div>
+                        </div>
+                      <% } %>
+                      <% if (entry.claim.answers && entry.claim.answers.length) { %>
+                        <div class="mt-2">
+                          <div class="text-muted small mb-1">Verification answers</div>
+                          <% entry.claim.answers.forEach((answer, idx) => { %>
+                            <% const questionText = (entry.verificationQuestions && entry.verificationQuestions[idx]) ? entry.verificationQuestions[idx].question : `Q${idx + 1}`; %>
+                            <% const matched = entry.claim.score && Array.isArray(entry.claim.score.answerMatches) ? entry.claim.score.answerMatches[idx] : null; %>
+                            <div class="small d-flex align-items-center gap-2">
+                              <strong><%= questionText %>:</strong> <span><%= answer || '—' %></span>
+                              <% if (matched === true) { %>
+                                <span class="badge bg-success">Match</span>
+                              <% } else if (matched === false) { %>
+                                <span class="badge bg-danger">No match</span>
+                              <% } %>
+                            </div>
+                          <% }) %>
+                        </div>
+                      <% } %>
+                      <% if (entry.claim.proofPath) { %>
+                        <a href="<%= entry.claim.proofPath %>" class="btn btn-outline-primary btn-sm" target="_blank">View proof</a>
+                      <% } %>
+                      <% if (returnStatus === 'requested') { %>
+                        <div class="mt-2">
+                          <span class="badge bg-warning text-dark">Return requested</span>
+                        </div>
+                      <% } %>
+                    </div>
+                    <div class="d-flex flex-column align-items-end gap-2">
+                      <span class="badge rounded-pill bg-<%= historyStatus === 'accepted' ? 'success' : historyStatus === 'denied' ? 'secondary' : 'warning' %> <%= historyStatus === 'pending' ? 'text-dark' : 'text-white' %> text-uppercase"><%= historyStatus %></span>
+                      <a href="/items/<%= entry.itemId %>" class="btn btn-outline-secondary btn-sm">View item</a>
+                      <% if (returnStatus === 'requested') { %>
+                        <form method="post" action="/items/<%= entry.itemId %>/claim/<%= entry.claim.id %>/return-confirm">
+                          <button class="btn btn-outline-danger btn-sm" type="submit">Confirm return</button>
+                        </form>
+                      <% } %>
+                      <% if (returnStatus === 'completed') { %>
+                        <span class="badge bg-success">Return completed</span>
+                      <% } %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+
+    <% if (myClaims && myClaims.length) { %>
+      <div class="dashboard-claims mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h5 class="mb-0">My Claim Requests</h5>
+          <span class="badge rounded-pill bg-primary"><%= myClaims.length %></span>
+        </div>
+        <div class="row g-3">
+          <% myClaims.forEach((entry) => { %>
+            <% const status = entry.claim.status || 'pending'; %>
+            <% const statusClass = status === 'accepted' ? 'success' : status === 'denied' ? 'secondary' : 'warning'; %>
+            <% const statusTextClass = status === 'pending' ? 'text-dark' : 'text-white'; %>
+            <% const returnStatus = entry.claim.returnStatus || 'none'; %>
+            <% const returnWindowEndsAt = entry.claim.returnWindowEndsAt ? new Date(entry.claim.returnWindowEndsAt) : null; %>
+            <% const returnDueAt = entry.claim.returnDueAt ? new Date(entry.claim.returnDueAt) : null; %>
+            <% const canRequestReturn = status === 'accepted' && returnStatus === 'none' && returnWindowEndsAt && new Date() <= returnWindowEndsAt; %>
+            <div class="col-12">
+              <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                    <div>
+                      <h6 class="mb-1">
+                        <%= entry.itemName %>
+                        <span class="text-muted">(<%= entry.itemType %>)</span>
+                      </h6>
+                      <% if (entry.ownerName) { %>
+                        <p class="mb-1 text-muted small">Reporter: <%= entry.ownerName %></p>
+                      <% } %>
+                      <% if (entry.claim.description) { %>
+                        <p class="mb-2"><%= entry.claim.description %></p>
+                      <% } %>
+                      <% if (entry.claim.proofPath) { %>
+                        <a href="<%= entry.claim.proofPath %>" class="btn btn-outline-primary btn-sm" target="_blank">View proof</a>
+                      <% } %>
+                      <% if (status === 'accepted' && returnDueAt) { %>
+                        <p class="mt-2 mb-0 text-muted small">Return due by: <%= returnDueAt.toLocaleDateString() %></p>
+                      <% } %>
+                      <% if (status === 'accepted' && returnWindowEndsAt) { %>
+                        <p class="mt-1 mb-0 text-muted small">Return request deadline: <%= returnWindowEndsAt.toLocaleDateString() %></p>
+                      <% } %>
+                    </div>
+                    <div class="d-flex flex-column align-items-end gap-2">
+                      <span class="badge rounded-pill bg-<%= statusClass %> <%= statusTextClass %> text-uppercase"><%= status %></span>
+                      <a href="/items/<%= entry.itemId %>" class="btn btn-outline-secondary btn-sm">View item</a>
+                      <% if (returnStatus === 'requested') { %>
+                        <span class="badge bg-warning text-dark">Return requested</span>
+                      <% } %>
+                      <% if (returnStatus === 'completed') { %>
+                        <span class="badge bg-success">Return completed</span>
+                      <% } %>
+                      <% if (canRequestReturn) { %>
+                        <form method="post" action="/items/<%= entry.itemId %>/claim/<%= entry.claim.id %>/return-request">
+                          <button class="btn btn-outline-danger btn-sm" type="submit">Request return</button>
+                        </form>
+                      <% } %>
                     </div>
                   </div>
                 </div>

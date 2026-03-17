@@ -19,6 +19,9 @@ const itemRoutes = require('./routes/items');
 const indexRoutes = require('./routes/index');
 const chatRoutes = require('./routes/chat');
 const dashboardRoutes = require('./routes/dashboard');
+const adminRoutes = require('./routes/admin');
+const messageModel = require('./models/message');
+const itemModel = require('./models/item');
 
 const app = express();
 const server = http.createServer(app);
@@ -57,6 +60,8 @@ app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
   res.locals.messages = req.flash();
   res.locals.currentPath = req.path;
+  res.locals.unreadChatCount = 0;
+  res.locals.claimDecisionCount = 0;
   res.locals.currentSection = (() => {
     if (req.path === '/') return 'home';
     if (req.path.startsWith('/items/search')) return 'feed';
@@ -65,9 +70,27 @@ app.use((req, res, next) => {
     if (req.path.startsWith('/items/found')) return 'found';
     if (req.path.startsWith('/chat')) return 'chat';
     if (req.path.startsWith('/dashboard')) return 'dashboard';
+    if (req.path.startsWith('/admin')) return 'admin';
     return '';
   })();
-  next();
+
+  if (req.session.user) {
+    Promise.all([
+      messageModel.getUnreadCount(req.session.user.id),
+      itemModel.getClaimDecisionCountForClaimant(req.session.user.id),
+    ])
+      .then(([chatCount, claimCount]) => {
+        res.locals.unreadChatCount = chatCount;
+        res.locals.claimDecisionCount = claimCount;
+        next();
+      })
+      .catch((err) => {
+        console.error('Unread count error:', err);
+        next();
+      });
+  } else {
+    next();
+  }
 });
 
 const shouldLogChat = process.env.NODE_ENV !== 'production';
@@ -127,6 +150,7 @@ app.use('/auth', authRoutes);
 app.use('/items', itemRoutes);
 app.use('/chat', chatRoutes);
 app.use('/dashboard', dashboardRoutes);
+app.use('/admin', adminRoutes);
 
 app.use((req, res) => {
   res.status(404).render('404', { title: 'Not Found' });
@@ -138,7 +162,7 @@ function startServer(startPort, maxAttempts = 10) {
 
   const tryListen = () => {
     server.listen(port, () => {
-      console.log(`Campus Lost & Found running at http://localhost:${port}`);
+      console.log(`Lost2Found running at http://localhost:${port}`);
     });
 
     server.on('error', (err) => {

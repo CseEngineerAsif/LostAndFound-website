@@ -125,6 +125,18 @@ async function updateClaimStatus(itemId, claimId, status) {
 
   claim.status = status;
   claim.updatedAt = new Date().toISOString();
+  if (status === 'accepted' || status === 'denied') {
+    claim.seenByClaimant = false;
+  }
+  if (status === 'accepted') {
+    const acceptedAt = new Date();
+    const returnWindowEndsAt = new Date(acceptedAt.getTime() + 72 * 60 * 60 * 1000);
+    const returnDueAt = new Date(acceptedAt.getTime() + 5 * 24 * 60 * 60 * 1000);
+    claim.acceptedAt = acceptedAt.toISOString();
+    claim.returnWindowEndsAt = returnWindowEndsAt.toISOString();
+    claim.returnDueAt = returnDueAt.toISOString();
+    if (!claim.returnStatus) claim.returnStatus = 'none';
+  }
 
   if (status === 'accepted') {
     item.status = 'resolved';
@@ -141,6 +153,94 @@ async function updateClaimStatus(itemId, claimId, status) {
   return claim;
 }
 
+async function getClaimDecisionCountForClaimant(userId) {
+  await db.read();
+  const items = db.data?.items || [];
+  let count = 0;
+  items.forEach((item) => {
+    (item.claims || []).forEach((claim) => {
+      if (
+        String(claim.claimantId) === String(userId) &&
+        (claim.status === 'accepted' || claim.status === 'denied') &&
+        claim.seenByClaimant !== true
+      ) {
+        count += 1;
+      }
+    });
+  });
+  return count;
+}
+
+async function markClaimDecisionsSeenForClaimant(userId) {
+  await db.read();
+  const items = db.data?.items || [];
+  let changed = false;
+  items.forEach((item) => {
+    (item.claims || []).forEach((claim) => {
+      if (
+        String(claim.claimantId) === String(userId) &&
+        (claim.status === 'accepted' || claim.status === 'denied') &&
+        claim.seenByClaimant !== true
+      ) {
+        claim.seenByClaimant = true;
+        changed = true;
+      }
+    });
+  });
+  if (changed) {
+    await db.write();
+  }
+  return changed;
+}
+
+async function requestClaimReturn(itemId, claimId, userId) {
+  await db.read();
+  const item = (db.data?.items || []).find((row) => row.id === Number(itemId));
+  if (!item || !item.claims) return { ok: false, reason: 'not_found' };
+  const claim = item.claims.find((c) => String(c.id) === String(claimId));
+  if (!claim) return { ok: false, reason: 'not_found' };
+  if (String(claim.claimantId) !== String(userId)) return { ok: false, reason: 'forbidden' };
+  if (claim.status !== 'accepted') return { ok: false, reason: 'not_accepted' };
+
+  const windowEnds = claim.returnWindowEndsAt ? new Date(claim.returnWindowEndsAt) : null;
+  if (windowEnds && new Date() > windowEnds) return { ok: false, reason: 'window_closed' };
+
+  claim.returnStatus = 'requested';
+  claim.returnRequestedAt = new Date().toISOString();
+  item.status = 'return_pending';
+  item.updatedAt = new Date().toISOString();
+  await db.write();
+  return { ok: true, claim, item };
+}
+
+async function confirmClaimReturn(itemId, claimId, actorUserId) {
+  await db.read();
+  const item = (db.data?.items || []).find((row) => row.id === Number(itemId));
+  if (!item || !item.claims) return { ok: false, reason: 'not_found' };
+  const claim = item.claims.find((c) => String(c.id) === String(claimId));
+  if (!claim) return { ok: false, reason: 'not_found' };
+
+  claim.returnStatus = 'completed';
+  claim.returnCompletedAt = new Date().toISOString();
+  claim.status = 'returned';
+  claim.updatedAt = new Date().toISOString();
+  item.status = 'reported';
+  item.updatedAt = new Date().toISOString();
+  await db.write();
+  return { ok: true, claim, item };
+}
+
+async function markReturnReminderSent(itemId, claimId) {
+  await db.read();
+  const item = (db.data?.items || []).find((row) => row.id === Number(itemId));
+  if (!item || !item.claims) return false;
+  const claim = item.claims.find((c) => String(c.id) === String(claimId));
+  if (!claim) return false;
+  claim.returnReminderSentAt = new Date().toISOString();
+  await db.write();
+  return true;
+}
+
 async function getClaimRequestsForOwner(userId) {
   await db.read();
   const items = (db.data?.items || []).filter((item) => item.userId === userId);
@@ -153,11 +253,54 @@ async function getClaimRequestsForOwner(userId) {
           itemId: item.id,
           itemName: item.name,
           itemType: item.type,
+          verificationQuestions: item.verificationQuestions || [],
           claim,
         });
       });
   });
   return requests.sort((a, b) => new Date(b.claim.createdAt) - new Date(a.claim.createdAt));
+}
+
+async function getClaimHistoryForOwner(userId) {
+  await db.read();
+  const items = (db.data?.items || []).filter((item) => item.userId === userId);
+  const history = [];
+  items.forEach((item) => {
+    (item.claims || []).forEach((claim) => {
+      history.push({
+        itemId: item.id,
+        itemName: item.name,
+        itemType: item.type,
+        itemStatus: item.status,
+        verificationQuestions: item.verificationQuestions || [],
+        claim,
+      });
+    });
+  });
+  return history.sort((a, b) => new Date(b.claim.createdAt) - new Date(a.claim.createdAt));
+}
+
+async function getClaimsByClaimant(userId) {
+  await db.read();
+  const items = db.data?.items || [];
+  const claims = [];
+
+  items.forEach((item) => {
+    (item.claims || [])
+      .filter((claim) => String(claim.claimantId) === String(userId))
+      .forEach((claim) => {
+        claims.push({
+          itemId: item.id,
+          itemName: item.name,
+          itemType: item.type,
+          itemStatus: item.status,
+          ownerName: item.reportedByName,
+          claim,
+        });
+      });
+  });
+
+  return claims.sort((a, b) => new Date(b.claim.createdAt) - new Date(a.claim.createdAt));
 }
 
 async function getStats() {
@@ -232,4 +375,11 @@ module.exports = {
   findSimilarItems,
   getItemsByUser,
   getClaimRequestsForOwner,
+  getClaimsByClaimant,
+  getClaimHistoryForOwner,
+  getClaimDecisionCountForClaimant,
+  markClaimDecisionsSeenForClaimant,
+  requestClaimReturn,
+  confirmClaimReturn,
+  markReturnReminderSent,
 };

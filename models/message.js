@@ -100,3 +100,12 @@ exports.markConversationRead = async (userId, otherId) => {
     saveDb(db);
   }
 };
+
+exports.getUnreadCount = async (userId) => {
+  const db = getDb();
+  const uId = String(userId);
+  const messages = db.messages || [];
+  return messages.filter(
+    (m) => String(m.recipientId) === uId && m.readByRecipient !== true
+  ).length;
+};

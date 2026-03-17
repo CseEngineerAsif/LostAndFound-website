@@ -1,0 +1,227 @@
+<section class="dashboard-hero">
+  <div class="page-hero dashboard-hero__panel">
+    <div>
+      <span class="badge-soft"><i class="bi bi-shield-check me-2"></i>Admin Dashboard</span>
+      <h2 class="mt-3 mb-2">Campus activity control center</h2>
+      <p class="text-muted mb-3">Monitor reports, review claims, and keep the community safe.</p>
+    </div>
+    <div class="dashboard-hero__actions">
+      <a href="/items/report" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Post Admin Report
+      </a>
+      <a href="/items/search" class="btn btn-ghost">
+        <i class="bi bi-search me-1"></i>Browse Feed
+      </a>
+    </div>
+  </div>
+
+  <div class="stat-grid dashboard-stats">
+    <div class="stat-card">
+      <span>Total Users</span>
+      <h3 class="mb-0"><%= overview.totalUsers %></h3>
+    </div>
+    <div class="stat-card">
+      <span>Total Reports</span>
+      <h3 class="mb-0"><%= overview.totalItems %></h3>
+    </div>
+    <div class="stat-card">
+      <span>Open Cases</span>
+      <h3 class="mb-0"><%= overview.open %></h3>
+    </div>
+    <div class="stat-card">
+      <span>Pending Claims</span>
+      <h3 class="mb-0"><%= overview.pendingClaims %></h3>
+    </div>
+    <div class="stat-card">
+      <span>Resolved</span>
+      <h3 class="mb-0"><%= overview.resolved %></h3>
+    </div>
+    <div class="stat-card">
+      <span>Total Claims</span>
+      <h3 class="mb-0"><%= overview.totalClaims %></h3>
+    </div>
+  </div>
+</section>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h5 class="mb-0">Claims Needing Review</h5>
+          <span class="badge rounded-pill bg-danger"><%= pendingClaims.length %></span>
+        </div>
+        <% if (pendingClaims.length) { %>
+          <div class="d-grid gap-3">
+            <% pendingClaims.forEach((entry) => { %>
+              <% const scoreTotal = typeof entry.claim?.score?.total === 'number' ? entry.claim.score.total : null; %>
+              <div class="border rounded-3 p-3">
+                <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                  <div>
+                    <h6 class="mb-1"><%= entry.itemName %> <span class="text-muted">(<%= entry.itemType %>)</span></h6>
+                    <p class="mb-1 text-muted small">Claimant: <%= entry.claim.claimantName %></p>
+                    <% if (entry.claim.description) { %>
+                      <p class="mb-2"><%= entry.claim.description %></p>
+                    <% } %>
+                    <% if (entry.claim.claimedDate) { %>
+                      <p class="mb-2 text-muted small">Claimed date: <%= entry.claim.claimedDate %></p>
+                    <% } %>
+                    <% if (scoreTotal !== null) { %>
+                      <div class="mb-2">
+                        <div class="d-flex justify-content-between small text-muted">
+                          <span>Confidence</span>
+                          <span><%= scoreTotal %>%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                          <div class="progress-bar bg-<%= scoreTotal >= 70 ? 'success' : scoreTotal >= 40 ? 'warning' : 'danger' %>" style="width: <%= scoreTotal %>%"></div>
+                        </div>
+                      </div>
+                    <% } %>
+                    <% if (entry.claim.proofPath) { %>
+                      <a href="<%= entry.claim.proofPath %>" class="btn btn-outline-primary btn-sm" target="_blank">View proof</a>
+                    <% } %>
+                  </div>
+                  <div class="d-flex flex-column align-items-end gap-2">
+                    <a href="/items/<%= entry.itemId %>" class="btn btn-outline-secondary btn-sm">View item</a>
+                    <div class="d-flex gap-2">
+                      <form method="post" action="/items/<%= entry.itemId %>/claim/<%= entry.claim.id %>/accept">
+                        <button class="btn btn-primary btn-sm" type="submit">Accept</button>
+                      </form>
+                      <form method="post" action="/items/<%= entry.itemId %>/claim/<%= entry.claim.id %>/deny">
+                        <button class="btn btn-outline-secondary btn-sm" type="submit">Deny</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } else { %>
+          <div class="text-muted">No pending claims right now.</div>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h5 class="mb-0">Items With Multiple Claims</h5>
+          <span class="badge rounded-pill bg-secondary"><%= multiClaimItems.length %></span>
+        </div>
+        <% if (multiClaimItems.length) { %>
+          <div class="row g-3">
+            <% multiClaimItems.forEach((item) => { %>
+              <div class="col-md-6">
+                <div class="border rounded-3 p-3 h-100">
+                  <div class="d-flex justify-content-between mb-2">
+                    <span class="badge bg-<%= item.type === 'lost' ? 'danger' : 'success' %>"><%= item.type.toUpperCase() %></span>
+                    <span class="badge bg-<%= item.status === 'resolved' ? 'success' : 'secondary' %>"><%= item.status %></span>
+                  </div>
+                  <h6 class="mb-1"><%= item.name %></h6>
+                  <div class="small text-muted mb-2">Reporter: <%= item.reportedByName || 'Anonymous' %></div>
+                  <div class="d-flex justify-content-between small text-muted">
+                    <span>Total claims</span>
+                    <span><%= item.totalClaims %></span>
+                  </div>
+                  <div class="d-flex justify-content-between small text-muted">
+                    <span>Pending claims</span>
+                    <span><%= item.pendingCount %></span>
+                  </div>
+                  <div class="d-flex justify-content-between small text-muted">
+                    <span>Top score</span>
+                    <span><%= item.topScore %>%</span>
+                  </div>
+                  <a href="/items/<%= item.id %>" class="btn btn-outline-primary btn-sm mt-3 w-100">Review item</a>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } else { %>
+          <div class="text-muted">No multi-claim items yet.</div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h5 class="mb-0">Recent Reports</h5>
+          <span class="badge rounded-pill bg-light text-dark"><%= recentReports.length %></span>
+        </div>
+        <div class="d-grid gap-2">
+          <% if (recentReports.length) { %>
+            <% recentReports.forEach((item) => { %>
+              <a href="/items/<%= item.id %>" class="text-decoration-none">
+                <div class="border rounded-3 p-2">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <div class="fw-semibold"><%= item.name %></div>
+                      <div class="small text-muted"><%= item.location %> • <%= new Date(item.createdAt).toLocaleDateString() %></div>
+                    </div>
+                    <span class="badge bg-<%= item.type === 'lost' ? 'danger' : 'success' %>"><%= item.type.toUpperCase() %></span>
+                  </div>
+                </div>
+              </a>
+            <% }) %>
+          <% } else { %>
+            <div class="text-muted">No reports yet.</div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h5 class="mb-0">Recent Claims</h5>
+          <span class="badge rounded-pill bg-light text-dark"><%= recentClaims.length %></span>
+        </div>
+        <div class="d-grid gap-2">
+          <% if (recentClaims.length) { %>
+            <% recentClaims.forEach((entry) => { %>
+              <% const scoreTotal = typeof entry.claim?.score?.total === 'number' ? entry.claim.score.total : null; %>
+              <div class="border rounded-3 p-2">
+                <div class="fw-semibold"><%= entry.itemName %></div>
+                <div class="small text-muted"><%= entry.claim.claimantName %> • <%= new Date(entry.claim.createdAt).toLocaleDateString() %></div>
+                <div class="d-flex justify-content-between align-items-center mt-1">
+                  <span class="badge bg-<%= entry.claim.status === 'accepted' ? 'success' : entry.claim.status === 'denied' ? 'secondary' : 'warning' %> <%= entry.claim.status === 'pending' ? 'text-dark' : 'text-white' %> text-uppercase"><%= entry.claim.status %></span>
+                  <% if (scoreTotal !== null) { %>
+                    <span class="small text-muted"><%= scoreTotal %>%</span>
+                  <% } %>
+                </div>
+              </div>
+            <% }) %>
+          <% } else { %>
+            <div class="text-muted">No claims yet.</div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h5 class="mb-0">New Users</h5>
+          <span class="badge rounded-pill bg-light text-dark"><%= recentUsers.length %></span>
+        </div>
+        <div class="d-grid gap-2">
+          <% if (recentUsers.length) { %>
+            <% recentUsers.forEach((user) => { %>
+              <div class="border rounded-3 p-2 d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="fw-semibold"><%= user.name %></div>
+                  <div class="small text-muted"><%= user.email %></div>
+                </div>
+                <span class="small text-muted"><%= new Date(user.createdAt).toLocaleDateString() %></span>
+              </div>
+            <% }) %>
+          <% } else { %>
+            <div class="text-muted">No new users yet.</div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

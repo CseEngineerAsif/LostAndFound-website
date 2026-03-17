@@ -1,4 +1,4 @@
-# Campus Lost & Found Web Portal
+# Lost2Found
 
 A starter web application to report and search for lost and found items on campus.
 

@@ -1,7 +1,7 @@
 {
   "name": "campus-lost-and-found",
   "version": "0.1.0",
-  "description": "Campus Lost & Found Web Portal",
+  "description": "Lost2Found",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",

@@ -2,7 +2,7 @@
   <div class="container">
     <a class="navbar-brand brand-mark" href="/">
       <span class="brand-icon"><i class="bi bi-compass"></i></span>
-      <span class="brand-text">CampusFind</span>
+      <span class="brand-text">Lost2Found</span>
     </a>
     <button
       class="navbar-toggler"
@@ -34,11 +34,26 @@
           <a class="nav-link <%= currentSection === 'found' ? 'active' : '' %>" href="/items/found">Found Items</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link <%= currentSection === 'chat' ? 'active' : '' %>" href="/chat">Chat</a>
+          <a class="nav-link <%= currentSection === 'chat' ? 'active' : '' %>" href="/chat">
+            Chat
+            <% if (currentUser && unreadChatCount > 0) { %>
+              <span class="badge rounded-pill bg-danger ms-1"><%= unreadChatCount %></span>
+            <% } %>
+          </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link <%= currentSection === 'dashboard' ? 'active' : '' %>" href="/dashboard">Dashboard</a>
+          <a class="nav-link <%= currentSection === 'dashboard' ? 'active' : '' %>" href="/dashboard">
+            Dashboard
+            <% if (currentUser && claimDecisionCount > 0) { %>
+              <span class="badge rounded-pill bg-danger ms-1"><%= claimDecisionCount %></span>
+            <% } %>
+          </a>
         </li>
+        <% if (currentUser && currentUser.role === 'admin') { %>
+        <li class="nav-item">
+          <a class="nav-link <%= currentSection === 'admin' ? 'active' : '' %>" href="/admin">Admin</a>
+        </li>
+        <% } %>
       </ul>
       <div class="d-flex gap-2 align-items-center nav-actions">
         <button class="icon-button" aria-label="Search">
