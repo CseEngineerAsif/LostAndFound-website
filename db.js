@@ -1,21 +1,21 @@
-const path = require('path');
-const { Low } = require('lowdb');
-const { JSONFile } = require('lowdb/node');
+const mongoose = require('mongoose');
 
-const dataDir = path.join(__dirname, 'data');
-const dbFile = path.join(dataDir, 'db.json');
-
-const adapter = new JSONFile(dbFile);
-const db = new Low(adapter, { users: [], items: [] });
+let isConnected = false;
 
 async function init() {
-  if (!db.data) {
-    db.data = { users: [], items: [] };
-    await db.write();
+  if (isConnected) return;
+
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error('MONGODB_URI is not set');
   }
+
+  mongoose.set('strictQuery', true);
+  await mongoose.connect(uri);
+  isConnected = true;
 }
 
 module.exports = {
-  db,
+  mongoose,
   init,
 };

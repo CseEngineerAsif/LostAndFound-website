@@ -1,130 +1,159 @@
-const { db } = require('../db');
+const { mongoose } = require('../db');
 
-function getNextId(list) {
-  if (!list.length) return 1;
-  return Math.max(...list.map((row) => row.id || 0)) + 1;
+const verificationQuestionSchema = new mongoose.Schema(
+  {
+    question: { type: String, trim: true },
+    answer: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
+const scoreSchema = new mongoose.Schema(
+  {
+    total: Number,
+    proofPoints: Number,
+    answerPoints: Number,
+    timelinePoints: Number,
+    correctAnswers: Number,
+    totalQuestions: Number,
+    answerMatches: [Boolean],
+    timelineMatch: Boolean,
+  },
+  { _id: false }
+);
+
+const claimSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    claimantId: { type: String, required: true },
+    claimantName: { type: String, required: true },
+    description: String,
+    claimedDate: String,
+    proofPath: String,
+    status: { type: String, default: 'pending' },
+    answers: [String],
+    score: scoreSchema,
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: Date,
+    acceptedAt: Date,
+    returnWindowEndsAt: Date,
+    returnDueAt: Date,
+    returnStatus: { type: String, default: 'none' },
+    returnRequestedAt: Date,
+    returnCompletedAt: Date,
+    returnReminderSentAt: Date,
+    seenByClaimant: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+const itemSchema = new mongoose.Schema(
+  {
+    userId: { type: String, required: true },
+    type: { type: String, required: true },
+    name: { type: String, required: true },
+    description: String,
+    location: String,
+    dateLost: String,
+    category: String,
+    contactMethod: String,
+    anonymous: { type: Boolean, default: false },
+    reportedByName: String,
+    photoPath: String,
+    returnInfo: String,
+    returnBy: String,
+    verificationQuestions: [verificationQuestionSchema],
+    status: { type: String, default: 'reported' },
+    claims: [claimSchema],
+  },
+  { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } }
+);
+
+const Item = mongoose.models.Item || mongoose.model('Item', itemSchema);
+
+function isValidObjectId(value) {
+  return mongoose.Types.ObjectId.isValid(String(value));
 }
 
 async function createItem(item) {
-  await db.read();
-  db.data = db.data || { users: [], items: [] };
-
-  const id = getNextId(db.data.items);
-  const record = {
-    id,
-    ...item,
-    createdAt: new Date().toISOString(),
-  };
-
-  db.data.items.push(record);
-  await db.write();
-  return id;
+  const record = await Item.create(item);
+  return record.id;
 }
 
 async function findRecentItems(limit = 20) {
-  await db.read();
-  const items = db.data?.items || [];
-  return items
-    .slice()
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, limit);
+  return Item.find().sort({ createdAt: -1 }).limit(limit);
 }
 
 async function findById(id) {
-  await db.read();
-  return (db.data?.items || []).find((item) => item.id === Number(id));
+  if (!id || !isValidObjectId(id)) return null;
+  return Item.findById(id);
 }
 
 async function searchItems({ query, category, location, type, status, sort, date }) {
-  await db.read();
-  let items = (db.data?.items || []).slice();
+  const filters = {};
 
   if (query) {
-    const lower = query.toLowerCase();
-    items = items.filter((item) => {
-      const name = (item.name || '').toLowerCase();
-      const description = (item.description || '').toLowerCase();
-      return name.includes(lower) || description.includes(lower);
-    });
+    const regex = new RegExp(query, 'i');
+    filters.$or = [{ name: regex }, { description: regex }];
   }
 
-  if (category) {
-    items = items.filter((item) => item.category === category);
-  }
-
-  if (location) {
-    const lower = location.toLowerCase();
-    items = items.filter((item) => (item.location || '').toLowerCase().includes(lower));
-  }
-
-  if (type) {
-    items = items.filter((item) => item.type === type);
-  }
-
-  if (status) {
-    items = items.filter((item) => item.status === status);
-  }
+  if (category) filters.category = category;
+  if (location) filters.location = new RegExp(location, 'i');
+  if (type) filters.type = type;
+  if (status) filters.status = status;
 
   if (date) {
-    const target = new Date(date).toDateString();
-    items = items.filter((item) => {
-      const created = new Date(item.createdAt).toDateString();
-      return created === target;
-    });
+    const start = new Date(date);
+    if (!Number.isNaN(start.getTime())) {
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      filters.createdAt = { $gte: start, $lt: end };
+    }
   }
 
-  const sorted = items.sort((a, b) => {
-    const diff = new Date(b.createdAt) - new Date(a.createdAt);
-    return sort === 'oldest' ? -diff : diff;
-  });
-
-  return sorted.slice(0, 100);
+  const sortOrder = sort === 'oldest' ? 1 : -1;
+  return Item.find(filters).sort({ createdAt: sortOrder }).limit(100);
 }
 
 async function findByUserId(userId, options = {}) {
   const { limit = 6, status } = options;
-  await db.read();
-  let items = (db.data?.items || []).filter((item) => item.userId === userId);
-  if (status) {
-    items = items.filter((item) => item.status === status);
-  }
-  return items
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, limit);
+  const filters = { userId: String(userId) };
+  if (status) filters.status = status;
+  return Item.find(filters).sort({ createdAt: -1 }).limit(limit);
 }
 
 async function updateStatus(id, status) {
-  await db.read();
-  const item = (db.data?.items || []).find((row) => row.id === Number(id));
-  if (!item) return null;
-  item.status = status;
-  item.updatedAt = new Date().toISOString();
-  await db.write();
-  return item;
+  if (!id || !isValidObjectId(id)) return null;
+  return Item.findByIdAndUpdate(
+    id,
+    { status, updatedAt: new Date() },
+    { new: true }
+  );
 }
 
 async function addClaim(itemId, claim) {
-  await db.read();
-  const item = (db.data?.items || []).find((row) => row.id === Number(itemId));
+  if (!itemId || !isValidObjectId(itemId)) return null;
+  const item = await Item.findById(itemId);
   if (!item) return null;
   item.claims = item.claims || [];
   item.claims.push(claim);
   item.status = 'pending_claim';
-  item.updatedAt = new Date().toISOString();
-  await db.write();
+  item.updatedAt = new Date();
+  await item.save();
   return claim;
 }
 
 async function updateClaimStatus(itemId, claimId, status) {
-  await db.read();
-  const item = (db.data?.items || []).find((row) => row.id === Number(itemId));
+  if (!itemId || !isValidObjectId(itemId)) return null;
+  const item = await Item.findById(itemId);
   if (!item || !item.claims) return null;
 
   const claim = item.claims.find((c) => String(c.id) === String(claimId));
   if (!claim) return null;
 
   claim.status = status;
-  claim.updatedAt = new Date().toISOString();
+  claim.updatedAt = new Date();
   if (status === 'accepted' || status === 'denied') {
     claim.seenByClaimant = false;
   }
@@ -132,35 +161,35 @@ async function updateClaimStatus(itemId, claimId, status) {
     const acceptedAt = new Date();
     const returnWindowEndsAt = new Date(acceptedAt.getTime() + 72 * 60 * 60 * 1000);
     const returnDueAt = new Date(acceptedAt.getTime() + 5 * 24 * 60 * 60 * 1000);
-    claim.acceptedAt = acceptedAt.toISOString();
-    claim.returnWindowEndsAt = returnWindowEndsAt.toISOString();
-    claim.returnDueAt = returnDueAt.toISOString();
+    claim.acceptedAt = acceptedAt;
+    claim.returnWindowEndsAt = returnWindowEndsAt;
+    claim.returnDueAt = returnDueAt;
     if (!claim.returnStatus) claim.returnStatus = 'none';
   }
 
   if (status === 'accepted') {
     item.status = 'resolved';
-    item.updatedAt = new Date().toISOString();
+    item.updatedAt = new Date();
   } else if (status === 'denied') {
     const hasPending = item.claims.some((c) => c.status === 'pending');
     if (!hasPending) {
       item.status = 'reported';
-      item.updatedAt = new Date().toISOString();
+      item.updatedAt = new Date();
     }
   }
 
-  await db.write();
+  await item.save();
   return claim;
 }
 
 async function getClaimDecisionCountForClaimant(userId) {
-  await db.read();
-  const items = db.data?.items || [];
+  const uId = String(userId);
+  const items = await Item.find({ 'claims.claimantId': uId });
   let count = 0;
   items.forEach((item) => {
     (item.claims || []).forEach((claim) => {
       if (
-        String(claim.claimantId) === String(userId) &&
+        String(claim.claimantId) === uId &&
         (claim.status === 'accepted' || claim.status === 'denied') &&
         claim.seenByClaimant !== true
       ) {
@@ -172,13 +201,13 @@ async function getClaimDecisionCountForClaimant(userId) {
 }
 
 async function markClaimDecisionsSeenForClaimant(userId) {
-  await db.read();
-  const items = db.data?.items || [];
+  const uId = String(userId);
+  const items = await Item.find({ 'claims.claimantId': uId });
   let changed = false;
   items.forEach((item) => {
     (item.claims || []).forEach((claim) => {
       if (
-        String(claim.claimantId) === String(userId) &&
+        String(claim.claimantId) === uId &&
         (claim.status === 'accepted' || claim.status === 'denied') &&
         claim.seenByClaimant !== true
       ) {
@@ -186,16 +215,17 @@ async function markClaimDecisionsSeenForClaimant(userId) {
         changed = true;
       }
     });
+    if (changed) item.markModified('claims');
   });
   if (changed) {
-    await db.write();
+    await Promise.all(items.map((item) => item.save()));
   }
   return changed;
 }
 
 async function requestClaimReturn(itemId, claimId, userId) {
-  await db.read();
-  const item = (db.data?.items || []).find((row) => row.id === Number(itemId));
+  if (!itemId || !isValidObjectId(itemId)) return { ok: false, reason: 'not_found' };
+  const item = await Item.findById(itemId);
   if (!item || !item.claims) return { ok: false, reason: 'not_found' };
   const claim = item.claims.find((c) => String(c.id) === String(claimId));
   if (!claim) return { ok: false, reason: 'not_found' };
@@ -206,44 +236,43 @@ async function requestClaimReturn(itemId, claimId, userId) {
   if (windowEnds && new Date() > windowEnds) return { ok: false, reason: 'window_closed' };
 
   claim.returnStatus = 'requested';
-  claim.returnRequestedAt = new Date().toISOString();
+  claim.returnRequestedAt = new Date();
   item.status = 'return_pending';
-  item.updatedAt = new Date().toISOString();
-  await db.write();
+  item.updatedAt = new Date();
+  await item.save();
   return { ok: true, claim, item };
 }
 
-async function confirmClaimReturn(itemId, claimId, actorUserId) {
-  await db.read();
-  const item = (db.data?.items || []).find((row) => row.id === Number(itemId));
+async function confirmClaimReturn(itemId, claimId) {
+  if (!itemId || !isValidObjectId(itemId)) return { ok: false, reason: 'not_found' };
+  const item = await Item.findById(itemId);
   if (!item || !item.claims) return { ok: false, reason: 'not_found' };
   const claim = item.claims.find((c) => String(c.id) === String(claimId));
   if (!claim) return { ok: false, reason: 'not_found' };
 
   claim.returnStatus = 'completed';
-  claim.returnCompletedAt = new Date().toISOString();
+  claim.returnCompletedAt = new Date();
   claim.status = 'returned';
-  claim.updatedAt = new Date().toISOString();
+  claim.updatedAt = new Date();
   item.status = 'reported';
-  item.updatedAt = new Date().toISOString();
-  await db.write();
+  item.updatedAt = new Date();
+  await item.save();
   return { ok: true, claim, item };
 }
 
 async function markReturnReminderSent(itemId, claimId) {
-  await db.read();
-  const item = (db.data?.items || []).find((row) => row.id === Number(itemId));
+  if (!itemId || !isValidObjectId(itemId)) return false;
+  const item = await Item.findById(itemId);
   if (!item || !item.claims) return false;
   const claim = item.claims.find((c) => String(c.id) === String(claimId));
   if (!claim) return false;
-  claim.returnReminderSentAt = new Date().toISOString();
-  await db.write();
+  claim.returnReminderSentAt = new Date();
+  await item.save();
   return true;
 }
 
 async function getClaimRequestsForOwner(userId) {
-  await db.read();
-  const items = (db.data?.items || []).filter((item) => item.userId === userId);
+  const items = await Item.find({ userId: String(userId) });
   const requests = [];
   items.forEach((item) => {
     (item.claims || [])
@@ -262,8 +291,7 @@ async function getClaimRequestsForOwner(userId) {
 }
 
 async function getClaimHistoryForOwner(userId) {
-  await db.read();
-  const items = (db.data?.items || []).filter((item) => item.userId === userId);
+  const items = await Item.find({ userId: String(userId) });
   const history = [];
   items.forEach((item) => {
     (item.claims || []).forEach((claim) => {
@@ -281,13 +309,13 @@ async function getClaimHistoryForOwner(userId) {
 }
 
 async function getClaimsByClaimant(userId) {
-  await db.read();
-  const items = db.data?.items || [];
+  const uId = String(userId);
+  const items = await Item.find({ 'claims.claimantId': uId });
   const claims = [];
 
   items.forEach((item) => {
     (item.claims || [])
-      .filter((claim) => String(claim.claimantId) === String(userId))
+      .filter((claim) => String(claim.claimantId) === uId)
       .forEach((claim) => {
         claims.push({
           itemId: item.id,
@@ -304,59 +332,48 @@ async function getClaimsByClaimant(userId) {
 }
 
 async function getStats() {
-  await db.read();
-  const items = db.data?.items || [];
-  const total = items.length;
-  const lost = items.filter((item) => item.type === 'lost').length;
-  const found = items.filter((item) => item.type === 'found').length;
-  const resolved = items.filter((item) => item.status === 'resolved').length;
+  const total = await Item.countDocuments();
+  const lost = await Item.countDocuments({ type: 'lost' });
+  const found = await Item.countDocuments({ type: 'found' });
+  const resolved = await Item.countDocuments({ status: 'resolved' });
   const active = total - resolved;
   return { total, lost, found, resolved, active };
 }
 
 async function getUserStats(userId) {
-  await db.read();
-  const items = (db.data?.items || []).filter((item) => item.userId === userId);
-  const total = items.length;
-  const resolved = items.filter((item) => item.status === 'resolved').length;
+  const total = await Item.countDocuments({ userId: String(userId) });
+  const resolved = await Item.countDocuments({ userId: String(userId), status: 'resolved' });
   const active = total - resolved;
   return { total, resolved, active };
 }
 
 async function findSimilarItems(sourceItem, limit = 3) {
   if (!sourceItem) return [];
-  await db.read();
-  return (db.data?.items || [])
-    .filter((item) => item.id !== sourceItem.id && item.category === sourceItem.category)
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, limit);
+  return Item.find({
+    _id: { $ne: sourceItem._id },
+    category: sourceItem.category,
+  })
+    .sort({ createdAt: -1 })
+    .limit(limit);
 }
 
 async function deleteItem(id) {
-  await db.read();
-  const items = db.data?.items || [];
-  const index = items.findIndex((item) => item.id === Number(id));
-  if (index === -1) return false;
-  items.splice(index, 1);
-  await db.write();
-  return true;
+  if (!id || !isValidObjectId(id)) return false;
+  const result = await Item.findByIdAndDelete(id);
+  return Boolean(result);
 }
 
 async function updateItem(id, updates) {
-  await db.read();
-  const item = (db.data?.items || []).find((row) => row.id === Number(id));
-  if (!item) return null;
-  Object.assign(item, updates);
-  item.updatedAt = new Date().toISOString();
-  await db.write();
-  return item;
+  if (!id || !isValidObjectId(id)) return null;
+  return Item.findByIdAndUpdate(
+    id,
+    { ...updates, updatedAt: new Date() },
+    { new: true }
+  );
 }
 
 async function getItemsByUser(userId) {
-  await db.read();
-  return (db.data?.items || [])
-    .filter((item) => item.userId === userId)
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return Item.find({ userId: String(userId) }).sort({ createdAt: -1 });
 }
 
 module.exports = {
@@ -382,4 +399,5 @@ module.exports = {
   requestClaimReturn,
   confirmClaimReturn,
   markReturnReminderSent,
+  Item,
 };

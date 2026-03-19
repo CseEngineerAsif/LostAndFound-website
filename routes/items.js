@@ -1,21 +1,23 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('../services/cloudinary');
 const itemModel = require('../models/item');
 const messageModel = require('../models/message');
 const { getFeaturedItem } = require('../data/featured-items');
 
 const router = express.Router();
 
-const uploadDir = path.join(__dirname, '..', 'public', 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const name = `${Date.now()}-${file.originalname}`;
-    cb(null, name);
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: process.env.CLOUDINARY_FOLDER || 'lost2found',
+    resource_type: 'image',
+    public_id: (req, file) => {
+      const base = path.parse(file.originalname).name.replace(/\s+/g, '-');
+      return `${Date.now()}-${base}`;
+    },
   },
 });
 
@@ -110,7 +112,7 @@ router.post('/report', requireLogin, upload.single('photo'), async (req, res) =>
     verifyQuestion3,
     verifyAnswer3,
   } = req.body;
-  const photoPath = req.file ? `/uploads/${req.file.filename}` : null;
+  const photoPath = req.file ? req.file.path : null;
   const verificationQuestions = [
     { question: (verifyQuestion1 || '').trim(), answer: (verifyAnswer1 || '').trim() },
     { question: (verifyQuestion2 || '').trim(), answer: (verifyAnswer2 || '').trim() },
@@ -295,7 +297,7 @@ router.post('/:id/claim', requireLogin, upload.single('proof'), async (req, res)
       return res.redirect(`/items/${item.id}`);
     }
   }
-  const proofPath = req.file ? `/uploads/${req.file.filename}` : null;
+  const proofPath = req.file ? req.file.path : null;
   if (!description && !proofPath) {
     req.flash('error', 'Please provide a description or upload a proof photo.');
     return res.redirect(`/items/${item.id}`);
@@ -508,7 +510,7 @@ router.post('/:id/update', requireLogin, upload.single('photo'), async (req, res
     anonymous,
   } = req.body;
 
-  const photoPath = req.file ? `/uploads/${req.file.filename}` : item.photoPath;
+  const photoPath = req.file ? req.file.path : item.photoPath;
 
   await itemModel.updateItem(req.params.id, {
     type,

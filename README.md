@@ -21,7 +21,22 @@ A starter web application to report and search for lost and found items on campu
 npm install
 ```
 
-### Initialize the database
+### Configure Environment
+
+Set these environment variables before running locally. You can use a `.env` file:
+
+- `MONGODB_URI` (MongoDB Atlas connection string)
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+- `SESSION_SECRET` (any long random string)
+
+Optional:
+- `CLOUDINARY_FOLDER` (defaults to `lost2found`)
+
+Create a `.env` file at the project root using `.env.example` as a template.
+
+### Check database connection
 
 ```bash
 npm run migrate
@@ -39,12 +54,11 @@ Then open: http://localhost:3000
 
 - `app.js` - main Express server
 - `routes/` - Express routes for auth, items, and home page
-- `models/` - simple lowdb-based data access layer
+- `models/` - MongoDB (Mongoose) data access layer
 - `views/` - EJS templates for UI
-- `public/` - CSS and uploaded photos
-- `data/db.json` - JSON datastore (created at runtime)
+- `public/` - CSS and static assets
 
 ## Notes
 
-- This is a minimal prototype. It uses `lowdb` for storage and is not suitable for production data.
-- For production, migrate to a proper database (MySQL/Postgres) and add security measures (CSRF, input validation, rate limiting).
+- This project now uses MongoDB Atlas for data and Cloudinary for uploads.
+- For production, add security measures (CSRF, input validation, rate limiting).

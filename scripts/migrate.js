@@ -1,16 +1,9 @@
-const fs = require('fs');
-const path = require('path');
 const { init } = require('../db');
 
-const dataDir = path.join(__dirname, '..', 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-
 async function migrate() {
-  console.log('Initializing database...');
+  console.log('Connecting to MongoDB...');
   await init();
-  console.log('Database initialized at', path.join(dataDir, 'db.json'));
+  console.log('MongoDB connection OK');
   process.exit(0);
 }
 

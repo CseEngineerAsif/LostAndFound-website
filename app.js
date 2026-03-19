@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const util = require('util');
 // Prevent deprecated util.isArray warnings from older dependencies.
 if (typeof util.isArray === 'function') {
