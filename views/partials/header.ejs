@@ -34,7 +34,10 @@
           <a class="nav-link <%= currentSection === 'found' ? 'active' : '' %>" href="/items/found">Found Items</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link <%= currentSection === 'chat' ? 'active' : '' %>" href="/chat">
+          <a class="nav-link <%= currentSection === 'returned' ? 'active' : '' %>" href="/items/returned">Returned Item</a>
+        </li>
+        <li class="nav-item">
+          <a id="chat-nav-link" class="nav-link <%= currentSection === 'chat' ? 'active' : '' %>" href="/chat">
             Chat
             <% if (currentUser && unreadChatCount > 0) { %>
               <span class="badge rounded-pill bg-danger ms-1"><%= unreadChatCount %></span>

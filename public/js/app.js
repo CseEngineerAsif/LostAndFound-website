@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const popupChatForm = document.getElementById('popup-chat-form');
   const chatShell = document.querySelector('.chat-shell');
   const isChatRoute = window.location.pathname.startsWith('/chat');
-  const shouldEnableChat = Boolean(chatShell || chatContainer || openChatBtn || isChatRoute);
+  const shouldEnableChat = Boolean(userId);
 
   // Exit if EventSource is not available, user is not logged in, or chat UI is not present.
   if (typeof EventSource === 'undefined' || !userId || !shouldEnableChat) {
@@ -268,8 +268,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   stream.addEventListener('chat-message', (event) => {
     const data = JSON.parse(event.data || '{}');
-    const chatBox = document.getElementById('chat-box');
-    if (!chatBox) return;
 
     const pathParts = window.location.pathname.split('/');
     let activeChatId = null;
@@ -281,7 +279,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (activeChatId && String(data.sender) === String(activeChatId)) {
-      appendChatMessage(data.sender, data.message);
+      const chatBox = document.getElementById('chat-box');
+      if (chatBox) {
+        appendChatMessage(data.sender, data.message);
+      }
       markConversationRead(activeChatId);
     } else {
       updateUnreadBadge(data.sender);

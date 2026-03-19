@@ -1,0 +1,135 @@
+<section class="page-hero">
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+    <div>
+      <h1 class="mb-1">Returned Items</h1>
+      <p class="text-muted mb-0">Browse items that have been successfully returned to their owners.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/items/report" class="btn btn-sun">Report Item</a>
+    </div>
+  </div>
+</section>
+
+<div class="filter-card p-4 mb-4">
+  <form class="row g-3" method="get" action="/items/returned">
+    <div class="col-md-4">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input
+          type="text"
+          name="q"
+          value="<%= filters.q || '' %>"
+          class="form-control"
+          placeholder="Search by item name or description"
+        />
+      </div>
+    </div>
+    <div class="col-md-2">
+      <select name="category" class="form-select">
+        <option value="">All categories</option>
+        <option value="Phone" <%= filters.category === 'Phone' ? 'selected' : '' %>>Phone</option>
+        <option value="Wallet" <%= filters.category === 'Wallet' ? 'selected' : '' %>>Wallet</option>
+        <option value="Bag" <%= filters.category === 'Bag' ? 'selected' : '' %>>Bag</option>
+        <option value="ID Card" <%= filters.category === 'ID Card' ? 'selected' : '' %>>ID Card</option>
+        <option value="Books" <%= filters.category === 'Books' ? 'selected' : '' %>>Books</option>
+        <option value="Electronics" <%= filters.category === 'Electronics' ? 'selected' : '' %>>Electronics</option>
+        <option value="Others" <%= filters.category === 'Others' ? 'selected' : '' %>>Others</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+        <input
+          type="text"
+          name="location"
+          value="<%= filters.location || '' %>"
+          class="form-control"
+          placeholder="Location"
+        />
+      </div>
+    </div>
+    <div class="col-md-2">
+      <select name="type" class="form-select">
+        <option value="">All types</option>
+        <option value="lost" <%= filters.type === 'lost' ? 'selected' : '' %>>Lost</option>
+        <option value="found" <%= filters.type === 'found' ? 'selected' : '' %>>Found</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <input
+        type="date"
+        name="date"
+        value="<%= filters.date || '' %>"
+        class="form-control"
+      />
+    </div>
+    <div class="col-md-3">
+      <select name="sort" class="form-select">
+        <option value="newest" <%= filters.sort === 'newest' ? 'selected' : '' %>>Newest first</option>
+        <option value="oldest" <%= filters.sort === 'oldest' ? 'selected' : '' %>>Oldest first</option>
+      </select>
+    </div>
+    <div class="col-md-3 d-grid">
+      <button class="btn btn-primary" type="submit">
+        <i class="bi bi-filter-circle me-1"></i>Apply filters
+      </button>
+    </div>
+    <div class="col-md-3 d-grid">
+      <a href="/items/returned" class="btn btn-ghost">Clear filters</a>
+    </div>
+  </form>
+</div>
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-3">
+  <div>
+    <h2 class="h5 mb-1">Results</h2>
+    <p class="text-muted mb-0"><%= items.length %> items returned</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <% if (filters.category) { %><span class="tag">Category: <%= filters.category %></span><% } %>
+    <% if (filters.type) { %><span class="tag">Type: <%= filters.type %></span><% } %>
+    <% if (filters.location) { %><span class="tag">Location: <%= filters.location %></span><% } %>
+    <span class="tag">Status: Returned</span>
+  </div>
+</div>
+
+<div class="row row-cols-1 row-cols-md-3 g-4">
+  <% if (items && items.length) { %>
+  <% items.forEach((item) => { %>
+  <div class="col">
+    <div class="item-card h-100 reveal">
+      <div class="item-image">
+        <% if (item.photoPath) { %>
+        <img src="<%= item.photoPath %>" alt="Item photo" />
+        <% } else { %>
+        <div class="text-center text-muted">
+          <i class="bi bi-camera" style="font-size: 2rem"></i>
+          <div class="small mt-2">No photo provided</div>
+        </div>
+        <% } %>
+      </div>
+      <div class="item-body d-flex flex-column">
+        <% const itemStatus = item.status || 'reported'; %>
+        <div class="d-flex justify-content-between align-items-start">
+          <h5 class="mb-0"><%= item.name %></h5>
+          <span class="status-pill status-<%= item.type %>"><%= item.type %></span>
+        </div>
+        <p class="text-muted mb-2"><%= item.description ? item.description.slice(0, 90) : 'No description provided.' %></p>
+        <div class="item-meta mt-auto">
+          <div><i class="bi bi-geo-alt me-1"></i><%= item.location %></div>
+          <div><i class="bi bi-calendar-event me-1"></i><%= new Date(item.createdAt).toLocaleDateString() %></div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <span class="status-pill status-<%= itemStatus %>"><%= itemStatus === 'resolved' ? 'Returned' : itemStatus %></span>
+          <a href="/items/<%= item.id %>" class="btn btn-sm btn-outline-primary">View details</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <% }) %>
+  <% } else { %>
+  <div class="col">
+    <div class="empty-state">No returned items found. Try adjusting your filters.</div>
+  </div>
+  <% } %>
+</div>

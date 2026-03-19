@@ -107,21 +107,15 @@ router.post('/report', requireLogin, upload.single('photo'), async (req, res) =>
     returnBy,
     verifyQuestion1,
     verifyAnswer1,
-    verifyQuestion2,
-    verifyAnswer2,
-    verifyQuestion3,
-    verifyAnswer3,
   } = req.body;
   const photoPath = req.file ? req.file.path : null;
   const verificationQuestions = [
     { question: (verifyQuestion1 || '').trim(), answer: (verifyAnswer1 || '').trim() },
-    { question: (verifyQuestion2 || '').trim(), answer: (verifyAnswer2 || '').trim() },
-    { question: (verifyQuestion3 || '').trim(), answer: (verifyAnswer3 || '').trim() },
   ].filter((entry) => entry.question && entry.answer);
 
   try {
-    if (verificationQuestions.length < 2) {
-      req.flash('error', 'Please provide at least two verification questions with answers.');
+    if (verificationQuestions.length < 1) {
+      req.flash('error', 'Please provide a verification question with an answer.');
       return res.redirect('/items/report');
     }
 
@@ -172,7 +166,7 @@ router.get('/search', async (req, res) => {
 
 router.get('/lost', async (req, res) => {
   const { q, category, location, status, sort, date } = req.query;
-  const items = await itemModel.searchItems({
+  let items = await itemModel.searchItems({
     query: q,
     category,
     location,
@@ -181,6 +175,9 @@ router.get('/lost', async (req, res) => {
     date,
     sort: sort || 'newest',
   });
+  if (!status) {
+    items = items.filter((item) => item.status !== 'resolved');
+  }
   res.render('lost', {
     title: 'Lost Items',
     items,
@@ -190,7 +187,7 @@ router.get('/lost', async (req, res) => {
 
 router.get('/found', async (req, res) => {
   const { q, category, location, status, sort, date } = req.query;
-  const items = await itemModel.searchItems({
+  let items = await itemModel.searchItems({
     query: q,
     category,
     location,
@@ -199,10 +196,31 @@ router.get('/found', async (req, res) => {
     date,
     sort: sort || 'newest',
   });
+  if (!status) {
+    items = items.filter((item) => item.status !== 'resolved');
+  }
   res.render('found', {
     title: 'Found Items',
     items,
     filters: { q, category, location, type: 'found', status, sort: sort || 'newest', date },
+  });
+});
+
+router.get('/returned', async (req, res) => {
+  const { q, category, location, type, sort, date } = req.query;
+  const items = await itemModel.searchItems({
+    query: q,
+    category,
+    location,
+    type,
+    status: 'resolved',
+    date,
+    sort: sort || 'newest',
+  });
+  res.render('returned', {
+    title: 'Returned Items',
+    items,
+    filters: { q, category, location, type, status: 'resolved', sort: sort || 'newest', date },
   });
 });
 
@@ -466,8 +484,48 @@ router.post('/:id/status', requireLogin, async (req, res) => {
     return res.redirect(`/items/${item.id}`);
   }
 
+  if (status === 'resolved' && !isAdmin && !item.returnAdminConfirmedAt) {
+    req.flash('error', 'Awaiting admin confirmation before marking this as returned.');
+    return res.redirect(`/items/${item.id}`);
+  }
+
   await itemModel.updateStatus(item.id, status);
   req.flash('success', 'Status updated successfully.');
+  res.redirect(`/items/${item.id}`);
+});
+
+router.post('/:id/return-admin', requireLogin, async (req, res) => {
+  const item = await itemModel.findById(req.params.id);
+  if (!item) return res.status(404).render('404', { title: 'Not Found' });
+
+  const isAdmin = req.session.user && req.session.user.role === 'admin';
+  if (!isAdmin) {
+    req.flash('error', 'Only admins can confirm returns.');
+    return res.redirect(`/items/${item.id}`);
+  }
+
+  await itemModel.markReturnAdminConfirmed(item.id, req.session.user.id);
+  req.flash('success', 'Admin return recorded. The owner can now mark it as returned.');
+  res.redirect(`/items/${item.id}`);
+});
+
+router.post('/:id/return-success', requireLogin, async (req, res) => {
+  const item = await itemModel.findById(req.params.id);
+  if (!item) return res.status(404).render('404', { title: 'Not Found' });
+
+  const isOwner = String(item.userId) === String(req.session.user.id);
+  if (!isOwner) {
+    req.flash('error', 'Only the original owner can confirm a successful return.');
+    return res.redirect(`/items/${item.id}`);
+  }
+
+  if (!item.returnAdminConfirmedAt) {
+    req.flash('error', 'Awaiting admin confirmation before marking this as returned.');
+    return res.redirect(`/items/${item.id}`);
+  }
+
+  await itemModel.markReturnUserConfirmed(item.id, req.session.user.id);
+  req.flash('success', 'Return confirmed. Thank you for updating the status.');
   res.redirect(`/items/${item.id}`);
 });
 

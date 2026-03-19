@@ -94,6 +94,22 @@ main.container {
   backdrop-filter: blur(10px);
 }
 
+@media (min-width: 992px) {
+  .site-navbar .container {
+    max-width: 1400px;
+  }
+
+  .site-navbar .navbar-nav {
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+  }
+
+  .site-navbar .nav-link {
+    white-space: nowrap;
+    font-size: 0.95rem;
+  }
+}
+
 .brand-mark {
   display: inline-flex;
   align-items: center;
@@ -1267,9 +1283,26 @@ main.container {
   box-shadow: 0 8px 20px rgba(11, 31, 42, 0.06);
 }
 
+.message-wrapper {
+  display: flex;
+  width: 100%;
+}
+
+.message-wrapper.sent {
+  justify-content: flex-end;
+}
+
+.message-wrapper.received {
+  justify-content: flex-start;
+}
+
 .message-bubble {
   display: grid;
   gap: 0.35rem;
+  border-radius: 16px;
+  width: fit-content;
+  max-width: min(75%, 520px);
+  padding: 0.6rem 0.95rem;
 }
 
 .message-time {

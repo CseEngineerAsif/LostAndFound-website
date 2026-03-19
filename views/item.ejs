@@ -1,5 +1,6 @@
 <div class="row g-4">
   <% const itemStatus = item.status || 'reported'; %>
+  <% const adminReturnConfirmedAt = item.returnAdminConfirmedAt ? new Date(item.returnAdminConfirmedAt) : null; %>
   <div class="col-lg-8">
     <div class="card">
       <% if (editMode && (isOwner || (currentUser && currentUser.role === 'admin'))) { %>
@@ -206,13 +207,34 @@
         <% } %>
       </div>
 
+      <% if (currentUser && currentUser.role === 'admin' && itemStatus !== 'resolved') { %>
+      <hr />
+      <h6 class="mb-2">Admin return</h6>
+      <% if (!adminReturnConfirmedAt) { %>
+        <form method="post" action="/items/<%= item.id %>/return-admin" class="d-grid gap-2">
+          <button class="btn btn-primary" type="submit">Confirm return to owner</button>
+        </form>
+      <% } else { %>
+        <div class="p-3 rounded" style="background: rgba(26, 166, 160, 0.12);">
+          <strong class="d-block mb-1">Admin return recorded</strong>
+          <span class="text-muted">Confirmed on <%= adminReturnConfirmedAt.toLocaleString() %>.</span>
+        </div>
+      <% } %>
+      <% } %>
+
       <% if (isOwner && itemStatus !== 'resolved') { %>
       <hr />
       <h6 class="mb-2">Update status</h6>
-      <form method="post" action="/items/<%= item.id %>/status" class="d-grid gap-2">
-        <input type="hidden" name="status" value="resolved" />
-        <button class="btn btn-primary" type="submit">Mark as returned</button>
-      </form>
+      <% if (adminReturnConfirmedAt) { %>
+        <form method="post" action="/items/<%= item.id %>/return-success" class="d-grid gap-2">
+          <button class="btn btn-primary" type="submit">Mark as successfully returned</button>
+        </form>
+      <% } else { %>
+        <div class="p-3 rounded" style="background: rgba(59, 130, 246, 0.1);">
+          <strong class="d-block mb-1">Awaiting admin confirmation</strong>
+          <span class="text-muted">An admin must confirm the return before you can mark it completed.</span>
+        </div>
+      <% } %>
       <% } else if (isOwner && itemStatus === 'resolved') { %>
       <div class="mt-4 p-3 rounded" style="background: rgba(16, 185, 129, 0.12);">
         <strong class="d-block mb-1">Marked returned</strong>

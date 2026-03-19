@@ -70,6 +70,7 @@ app.use((req, res, next) => {
     if (req.path.startsWith('/items/report')) return 'report';
     if (req.path.startsWith('/items/lost')) return 'lost';
     if (req.path.startsWith('/items/found')) return 'found';
+    if (req.path.startsWith('/items/returned')) return 'returned';
     if (req.path.startsWith('/chat')) return 'chat';
     if (req.path.startsWith('/dashboard')) return 'dashboard';
     if (req.path.startsWith('/admin')) return 'admin';

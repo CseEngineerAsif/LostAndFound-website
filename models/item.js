@@ -62,6 +62,10 @@ const itemSchema = new mongoose.Schema(
     photoPath: String,
     returnInfo: String,
     returnBy: String,
+    returnAdminConfirmedAt: Date,
+    returnAdminConfirmedBy: String,
+    returnUserConfirmedAt: Date,
+    returnUserConfirmedBy: String,
     verificationQuestions: [verificationQuestionSchema],
     status: { type: String, default: 'reported' },
     claims: [claimSchema],
@@ -130,6 +134,31 @@ async function updateStatus(id, status) {
     { status, updatedAt: new Date() },
     { new: true }
   );
+}
+
+async function markReturnAdminConfirmed(id, adminId) {
+  if (!id || !isValidObjectId(id)) return null;
+  const item = await Item.findById(id);
+  if (!item) return null;
+  if (!item.returnAdminConfirmedAt) {
+    item.returnAdminConfirmedAt = new Date();
+  }
+  item.returnAdminConfirmedBy = adminId ? String(adminId) : item.returnAdminConfirmedBy;
+  item.updatedAt = new Date();
+  await item.save();
+  return item;
+}
+
+async function markReturnUserConfirmed(id, userId) {
+  if (!id || !isValidObjectId(id)) return null;
+  const item = await Item.findById(id);
+  if (!item) return null;
+  item.returnUserConfirmedAt = new Date();
+  item.returnUserConfirmedBy = userId ? String(userId) : item.returnUserConfirmedBy;
+  item.status = 'resolved';
+  item.updatedAt = new Date();
+  await item.save();
+  return item;
 }
 
 async function addClaim(itemId, claim) {
@@ -383,6 +412,8 @@ module.exports = {
   searchItems,
   findByUserId,
   updateStatus,
+  markReturnAdminConfirmed,
+  markReturnUserConfirmed,
   addClaim,
   updateClaimStatus,
   deleteItem,
