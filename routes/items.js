@@ -88,6 +88,14 @@ function computeConfidenceScore({ proofProvided, itemDate, claimedDate, expected
   };
 }
 
+function redirectToPreviousOr(req, res, fallback) {
+  const ref = req.get('referer') || '';
+  if (ref.includes('/admin')) {
+    return res.redirect('/admin');
+  }
+  return res.redirect(fallback);
+}
+
 router.get('/report', requireLogin, (req, res) => {
   const prefillType = req.query.type === 'found' ? 'found' : 'lost';
   res.render('report', { title: 'Post Item', prefillType });
@@ -355,7 +363,7 @@ router.post('/:id/claim/:claimId/accept', requireLogin, async (req, res) => {
   const isAdmin = req.session.user && req.session.user.role === 'admin';
   if (!isOwner && !isAdmin) {
     req.flash('error', 'You do not have permission to update this claim.');
-    return res.redirect('/dashboard');
+    return redirectToPreviousOr(req, res, '/dashboard');
   }
 
   await itemModel.updateClaimStatus(item.id, req.params.claimId, 'accepted');
@@ -373,7 +381,7 @@ router.post('/:id/claim/:claimId/accept', requireLogin, async (req, res) => {
     });
   }
   req.flash('success', 'Claim accepted. The item has been marked as returned.');
-  res.redirect('/dashboard');
+  return redirectToPreviousOr(req, res, '/dashboard');
 });
 
 router.post('/:id/claim/:claimId/deny', requireLogin, async (req, res) => {
@@ -384,12 +392,12 @@ router.post('/:id/claim/:claimId/deny', requireLogin, async (req, res) => {
   const isAdmin = req.session.user && req.session.user.role === 'admin';
   if (!isOwner && !isAdmin) {
     req.flash('error', 'You do not have permission to update this claim.');
-    return res.redirect('/dashboard');
+    return redirectToPreviousOr(req, res, '/dashboard');
   }
 
   await itemModel.updateClaimStatus(item.id, req.params.claimId, 'denied');
   req.flash('info', 'Claim denied.');
-  res.redirect('/dashboard');
+  return redirectToPreviousOr(req, res, '/dashboard');
 });
 
 router.post('/:id/claim/:claimId/return-request', requireLogin, async (req, res) => {

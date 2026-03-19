@@ -1,9 +1,11 @@
-<%
+<% 
   const items = myItems || [];
   const lostItems = items.filter(item => item.type === 'lost');
   const foundItems = items.filter(item => item.type === 'found');
   const resolvedItems = items.filter(item => item.status === 'resolved');
   const openItems = items.filter(item => item.status !== 'resolved');
+  const returnPendingItems = items.filter(item => item.status === 'return_pending');
+  const returnRate = items.length ? Math.round((resolvedItems.length / items.length) * 100) : 0;
   const latestItem = items
     .slice()
     .sort((a, b) => new Date(b.createdAt || b.dateLost) - new Date(a.createdAt || a.dateLost))[0];
@@ -21,6 +23,20 @@
           <strong><%= new Date(latestItem.dateLost || latestItem.createdAt).toLocaleDateString() %></strong>.
         <% } %>
       </p>
+      <div class="dashboard-hero__insights">
+        <div class="insight-chip">
+          <span class="insight-label">Return success</span>
+          <strong><%= returnRate %>%</strong>
+        </div>
+        <div class="insight-chip">
+          <span class="insight-label">Open cases</span>
+          <strong><%= openItems.length %></strong>
+        </div>
+        <div class="insight-chip">
+          <span class="insight-label">Return pending</span>
+          <strong><%= returnPendingItems.length %></strong>
+        </div>
+      </div>
     </div>
     <div class="dashboard-hero__actions">
       <a href="/items/report" class="btn btn-primary">
@@ -49,6 +65,33 @@
       <span>Found Items</span>
       <h3 class="mb-0"><%= foundItems.length %></h3>
     </div>
+  </div>
+</section>
+
+<section class="dashboard-spotlight">
+  <div class="spotlight-card">
+    <div>
+      <span class="spotlight-label">Need attention</span>
+      <h4 class="mb-1"><%= (claimRequests || []).length %> claim requests</h4>
+      <p class="text-muted mb-0">Review pending claims to keep reports moving.</p>
+    </div>
+    <a href="/dashboard" class="btn btn-outline-primary btn-sm">Review now</a>
+  </div>
+  <div class="spotlight-card">
+    <div>
+      <span class="spotlight-label">Return window</span>
+      <h4 class="mb-1"><%= returnPendingItems.length %> returns pending</h4>
+      <p class="text-muted mb-0">Mark items as returned after admin confirmation.</p>
+    </div>
+    <a href="/items/returned" class="btn btn-ghost btn-sm">View returned</a>
+  </div>
+  <div class="spotlight-card">
+    <div>
+      <span class="spotlight-label">Momentum</span>
+      <h4 class="mb-1"><%= returnRate %>% return success</h4>
+      <p class="text-muted mb-0">You are helping close cases quickly.</p>
+    </div>
+    <a href="/items/report" class="btn btn-primary btn-sm">Report new</a>
   </div>
 </section>
 
