@@ -9,20 +9,22 @@ const { getFeaturedItem } = require('../data/featured-items');
 
 const router = express.Router();
 
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: process.env.CLOUDINARY_FOLDER || 'lost2found',
-    resource_type: 'image',
-    public_id: (req, file) => {
-      const base = path.parse(file.originalname).name.replace(/\s+/g, '-');
-      return `${Date.now()}-${base}`;
-    },
-  },
-});
+const uploadStorage = cloudinary.isConfigured
+  ? new CloudinaryStorage({
+      cloudinary,
+      params: {
+        folder: process.env.CLOUDINARY_FOLDER || 'lost2found',
+        resource_type: 'image',
+        public_id: (req, file) => {
+          const base = path.parse(file.originalname).name.replace(/\s+/g, '-');
+          return `${Date.now()}-${base}`;
+        },
+      },
+    })
+  : multer.memoryStorage();
 
-const upload = multer({ 
-  storage,
+const upload = multer({
+  storage: uploadStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
     const filetypes = /jpeg|jpg|png|webp/;
@@ -31,6 +33,35 @@ const upload = multer({
     cb(new Error('Only images (jpeg, jpg, png, webp) are allowed!'));
   }
 });
+
+function optionalImageUpload(fieldName) {
+  return (req, res, next) => {
+    const hasMultipart =
+      req.headers['content-type'] &&
+      req.headers['content-type'].includes('multipart/form-data');
+
+    if (!hasMultipart) {
+      return next();
+    }
+
+    upload.single(fieldName)(req, res, (err) => {
+      if (err) {
+        req.flash('error', err.message || 'Image upload failed.');
+        return res.redirect(req.originalUrl);
+      }
+
+      if (!cloudinary.isConfigured && req.file) {
+        req.flash(
+          'error',
+          'Image upload is not available right now. Please add Cloudinary environment variables in Vercel.'
+        );
+        return res.redirect(req.originalUrl);
+      }
+
+      next();
+    });
+  };
+}
 
 function requireLogin(req, res, next) {
   if (!req.session.user) {
@@ -101,7 +132,7 @@ router.get('/report', requireLogin, (req, res) => {
   res.render('report', { title: 'Post Item', prefillType });
 });
 
-router.post('/report', requireLogin, upload.single('photo'), async (req, res) => {
+router.post('/report', requireLogin, optionalImageUpload('photo'), async (req, res) => {
   const {
     type,
     name,
@@ -302,7 +333,7 @@ router.post('/:id/chat', requireLogin, async (req, res) => {
   res.redirect(`/chat/${item.userId}`);
 });
 
-router.post('/:id/claim', requireLogin, upload.single('proof'), async (req, res) => {
+router.post('/:id/claim', requireLogin, optionalImageUpload('proof'), async (req, res) => {
   const item = await itemModel.findById(req.params.id);
   if (!item) return res.status(404).render('404', { title: 'Not Found' });
 
@@ -554,7 +585,7 @@ router.post('/:id/delete', requireLogin, async (req, res) => {
   res.redirect('/dashboard');
 });
 
-router.post('/:id/update', requireLogin, upload.single('photo'), async (req, res) => {
+router.post('/:id/update', requireLogin, optionalImageUpload('photo'), async (req, res) => {
   const item = await itemModel.findById(req.params.id);
   if (!item) return res.status(404).render('404', { title: 'Not Found' });
 
@@ -595,3 +626,4 @@ router.post('/:id/update', requireLogin, upload.single('photo'), async (req, res
 });
 
 module.exports = router;
+

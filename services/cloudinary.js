@@ -4,6 +4,8 @@ const cloudinaryUrl = process.env.CLOUDINARY_URL;
 const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
 const apiKey = process.env.CLOUDINARY_API_KEY;
 const apiSecret = process.env.CLOUDINARY_API_SECRET;
+let configured = false;
+let configError = null;
 
 if (cloudinaryUrl) {
   try {
@@ -21,19 +23,22 @@ if (cloudinaryUrl) {
       api_key: urlApiKey,
       api_secret: urlApiSecret,
     });
+    configured = true;
   } catch (err) {
-    throw new Error('Invalid CLOUDINARY_URL');
+    configError = 'Invalid CLOUDINARY_URL';
   }
+} else if (!cloudName || !apiKey || !apiSecret) {
+  configError = 'Cloudinary environment variables are not set';
 } else {
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error('Cloudinary environment variables are not set');
-  }
-
   cloudinary.config({
     cloud_name: cloudName,
     api_key: apiKey,
     api_secret: apiSecret,
   });
+  configured = true;
 }
+
+cloudinary.isConfigured = configured;
+cloudinary.configError = configError;
 
 module.exports = cloudinary;
