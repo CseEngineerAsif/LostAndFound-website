@@ -1,7 +1,6 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('../services/cloudinary');
 const itemModel = require('../models/item');
 const messageModel = require('../models/message');
@@ -9,22 +8,8 @@ const { getFeaturedItem } = require('../data/featured-items');
 
 const router = express.Router();
 
-const uploadStorage = cloudinary.isConfigured
-  ? new CloudinaryStorage({
-      cloudinary,
-      params: {
-        folder: process.env.CLOUDINARY_FOLDER || 'lost2found',
-        resource_type: 'image',
-        public_id: (req, file) => {
-          const base = path.parse(file.originalname).name.replace(/\s+/g, '-');
-          return `${Date.now()}-${base}`;
-        },
-      },
-    })
-  : multer.memoryStorage();
-
 const upload = multer({
-  storage: uploadStorage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
     const filetypes = /jpeg|jpg|png|webp/;
@@ -33,6 +18,35 @@ const upload = multer({
     cb(new Error('Only images (jpeg, jpg, png, webp) are allowed!'));
   }
 });
+
+function uploadBufferToCloudinary(file) {
+  if (!cloudinary.isConfigured) {
+    throw new Error('Cloudinary is not configured');
+  }
+
+  const base = path.parse(file.originalname).name.replace(/\s+/g, '-');
+  const publicId = `${Date.now()}-${base}`;
+
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: process.env.CLOUDINARY_FOLDER || 'lost2found',
+        resource_type: 'image',
+        public_id: publicId,
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve(result);
+      }
+    );
+
+    stream.end(file.buffer);
+  });
+}
 
 function optionalImageUpload(fieldName) {
   return (req, res, next) => {
@@ -50,7 +64,7 @@ function optionalImageUpload(fieldName) {
         return res.redirect(req.originalUrl);
       }
 
-      if (!cloudinary.isConfigured && req.file) {
+      if (req.file && !cloudinary.isConfigured) {
         req.flash(
           'error',
           'Image upload is not available right now. Please add Cloudinary environment variables in Vercel.'
@@ -58,7 +72,22 @@ function optionalImageUpload(fieldName) {
         return res.redirect(req.originalUrl);
       }
 
-      next();
+      if (!req.file) {
+        next();
+        return;
+      }
+
+      uploadBufferToCloudinary(req.file)
+        .then((result) => {
+          req.file.path = result.secure_url;
+          req.file.filename = result.public_id;
+          next();
+        })
+        .catch((uploadError) => {
+          console.error('Cloudinary upload failed:', uploadError);
+          req.flash('error', 'Image upload failed. Please try again.');
+          res.redirect(req.originalUrl);
+        });
     });
   };
 }
